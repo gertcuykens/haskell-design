@@ -13,6 +13,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Network.WebSockets as WS
+import qualified Data.ByteString.Char8 as C
 import Login
 
 type Client = (Text, WS.Sink WS.Hybi10)
@@ -54,7 +55,13 @@ application state rq = do
     msg <- WS.receiveData
     clients <- liftIO $ readMVar state
     url <- liftIO fbUrl
-    --test <- liftIO fbEmail "daadad"
+
+    --let a = ("code","test")
+    --e <- fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a
+
+    let prefix = "Facebook code"
+    let client = (T.drop (T.length prefix) msg, sink)
+
     case msg of
         _   | not (prefix `T.isPrefixOf` msg) -> do
                 WS.sendTextData ("Facebook login " `mappend` url :: Text)
@@ -72,10 +79,6 @@ application state rq = do
                     broadcast (fst client `mappend` " joined") s'
                     return s'
                 talk state client
-            where
-                prefix = "Facebook code"
-                --client = ((T.drop (T.length prefix) msg), sink)
-                client = (T.drop (T.length prefix) msg, sink)
 
 websocket :: IO ()
 websocket = do

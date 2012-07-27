@@ -3,19 +3,22 @@ module Main (
 ) where
 
 import Server
-
---main :: IO ()
---main = websocket
-
 import Login
+import qualified Data.ByteString.Char8 as C
 
 main :: IO ()
 main = do
-    u <- fbUrl
-    print u
-    a <- readLn
-    e <- fbEmail a
-    --let a = ("code","dddd")
+    websocket
+
+    --u <- fbUrl
+    --print u
+
+    --a <- readLn
     --e <- fbEmail a
-    print e
+    --print e
+
+    --let a = ("code","test")
+    --e <- fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a
+    --print e
+
 
