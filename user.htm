@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- Copyright(c) gert.cuykens@gmail.com -->
+<html>
+ <head>
+  <title>user</title>
+  <link type="text/css" href="user.css" rel="stylesheet"/>
+  <script src="http.js"></script>
+ </head>
+ <body>
+
+  <form name="user" action="javascript:ws.send(JSON.stringify(formJSON(document.user)))">
+   <label>city:</label>    <input name="city"   /><br/>
+   <label>country:</label> <input name="country"/><br/>
+   <label>phone:</label>   <input name="phone"  /><br/>
+   <label>email:</label>   <input name="email"  /><br/>
+   <input type="submit" value="update"/>
+  </form>
+
+  <script>
+   var ws = createWebSocket('/');
+   ws.onopen = function(){ws.send('Facebook code ')}
+   ws.onmessage = function(event){alert(event.data)}
+   //JSONform(document.user,JSON.parse(this.response))
+
+   var img=document.createElement('img')
+   img.setAttribute('id','picture')
+   img.setAttribute('alt','picture')
+   img.setAttribute('src','picture.png')
+   dropBoxWS(ws,img)
+   document.body.appendChild(img)
+  </script>
+
+ </body>
+</html>

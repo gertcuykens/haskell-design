@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- Copyright(c) gert.cuykens@gmail.com -->
+<html>
+ <head>
+  <title>user</title>
+  <link type="text/css" href="user.css" rel="stylesheet"/>
+  <script src="http.js"></script>
+ </head>
+ <body>
+
+  <form name="session" action="javascript:return null">
+   <label>name:</label>     <input name="name"/><br/>
+   <label>password:</label> <input name="password"/><br/>
+   <input type="button" value="signup" onclick="signup()"/><br/>
+   <input type="button" value="login"  onclick="login()"/><br/>
+   <input type="button" value="logout" onclick="logout()"/><br/>
+   <input type="button" value="user" onclick="user()"/><br/>
+   <script>
+    signup=function(){
+     var u=new Object
+     u.name=document.session['name'].value
+     u.password=document.session['password'].value
+     u.roles=[]
+     u.type='user'
+     var x=new xhr()
+     x.open('put','/_users/org.couchdb.user%3A'+u.name,true)
+     x.setRequestHeader('Content-Type','application/json')
+     x.send(JSON.stringify(u))
+    }
+    login=function(){
+     var x=new xhr()
+     x.open('post','/_session',true)
+     x.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
+     x.send(formURI(document.session))
+    }
+    logout=function(){
+     var x=new xhr()
+     x.open('delete','/_session',true)
+     x.send()
+    }
+    user=function(){
+     document.location='/user.htm?'+document.session['name'].value
+    }
+   </script>
+  </form>
+
+ </body>
+</html>
+
+<!--
+   <script>
+    put=function(){
+     if(!userCtx.name)return 0
+     if(!ETag)return 0
+     var x=new xhr()
+     x.open('put','/users/_design/users/_update/form/'+userCtx.name,true)
+     x.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
+     x.setRequestHeader('If-Match',ETag)
+     x.send(formURI(document.user))
+    }
+   </script>
+
+  <form name="authentication" action="javascript:return null">
+   <label>user:</label>     <input name="user"/><br/>
+   <label>password:</label> <input name="password"/><br/>
+   <script>
+    auth=function(u,p){return 'Basic '+btoa(document.forms['authentication']['user'].value+':'+document.forms['authentication']['password'].value)}
+   </script>
+  </form>
+
+  <script>
+   x=new xhr()
+   x.open('get','/_session',true)
+   x.addEventListener('load',function(){
+    var v=JSON.parse(this.response)
+    userCtx=v['userCtx']
+    if(!userCtx.name)return 0
+    var x=new xhr()
+    x.open('get','/users/_design/users/_show/id/'+userCtx.name,true)
+    x.addEventListener('load',function(){
+     var i,v=JSON.parse(this.response)
+     for(i in v){if(document.user[i])document.user[i].value=v[i]}
+     var x=new XMLHttpRequest()
+     x.open('get','/dav/'+userCtx.name+'.png',true)
+     x.addEventListener('load',function(e){
+      try {var v=JSON.parse(this.response)} //if(!v['error'])
+      catch(e){document.getElementById('picture').src='/dav/'+userCtx.name+'.png'}
+     },false)
+     x.send()
+     if(ETag)return 0
+     var x=new xhr()
+     x.open('put','/users/_design/users/_update/form/'+userCtx.name,true)
+     x.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
+     x.send(formURI(document.user))
+    },false)
+    x.send()
+   },false)
+   x.send()
+  </script>
+
+  <form name="facebook" action="javascript:window.location='https://www.facebook.com/dialog/oauth?client_id=249348058430770&scope=user_about_me&redirect_uri=http:%2F%2Fcouchdb.no-ip.org:5984%2F_fb'">
+   <input type="submit" value="facebook"/><br/>
+  </form>
+
+  <script src="https://browserid.org/include.js"></script>
+  <form name="browserid" action="javascript:navigator.id.getVerifiedEmail(browserid)">
+   <input type="submit" value="browserid"/><br/>
+   <script>
+    browserid=function(assertion){
+     if(assertion){
+      var x=new xhr()
+      x.open('post','/_browserid',true)
+      x.setRequestHeader('Content-Type','application/json')
+      x.send('{"assertion":"'+assertion+'","audience":"couchdb.no-ip.org:5984"}')
+     }else{alert('doh!')}
+    }
+   </script>
+  </form>
+-->

@@ -5,6 +5,7 @@ module Main (
 import Server
 import Login
 import qualified Data.ByteString.Char8 as C
+import Control.Exception
 
 main :: IO ()
 main = do
@@ -15,10 +16,18 @@ main = do
 
     --a <- readLn
     --e <- fbEmail a
-    --print e
 
     --let a = ("code","test")
-    --e <- fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a
-    --print e
+    --e <- try (fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a)
 
+    --case e of
+    --    Left x -> print "doh!"
+    --    Right e -> print "ok"
+
+        --(Just e)
+        --Nothing -> print "doh!"
+        --Just e -> print e
+
+--e <- fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a
+--http://book.realworldhaskell.org/read/error-handling.html
 

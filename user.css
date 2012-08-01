@@ -1,0 +1,19 @@
+/* Copyright(c) gert.cuykens@gmail.com */
+* {margin:0px;padding:0px;}
+
+form {padding-top:10px;
+      width:250px;
+      text-align:right;}
+
+input {width:142px;margin:2px;}
+input[type="submit"]{width:146px;}
+input[type="button"]{width:146px;}
+
+progress{position:absolute;
+         left:260px;top:129px;
+         width:142px;}
+
+#picture{position:absolute;
+         left:260px;top:12px;
+         width:146px;height:113px;}
+

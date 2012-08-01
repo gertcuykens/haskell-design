@@ -36,13 +36,13 @@ $(document).ready(function () {
     $('#join-form').submit(function () {
         $('#warnings').html('');
         $('#join').append('Connecting...');
-        var user = $('#user').val();
+        var code = $('#user').val();
         var ws = createWebSocket('/');
         ws.onopen = function() {
-            ws.send('Hi! I am ' + user);
+            ws.send('Facebook code ' + code);
         };
         ws.onmessage = function(event) {
-            if (event.data.match('^Facebook: ')){
+            if (event.data.match('^Facebook url ')){
                 alert(event.data)
                 return true
             }

@@ -47,6 +47,7 @@ talk state client@(user, _) = flip WS.catchWsError catchDisconnect $ do
             return s'
         _ -> return ()
 
+{-
 application :: MVar ServerState -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 application state rq = do
     WS.acceptRequest rq
@@ -56,18 +57,17 @@ application state rq = do
     clients <- liftIO $ readMVar state
     url <- liftIO fbUrl
 
-    --let a = ("code","test")
-    --e <- fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a
+    let prefix = "Facebook code "
+    let code = T.unpack $ T.drop (T.length prefix) msg
+    e <- liftIO $ fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) ("code", code)
 
-    let prefix = "Facebook code"
-    let client = (T.drop (T.length prefix) msg, sink)
+    case e of
+        Just e -> let client = (e, sink)
+        Nothing -> let client = 0
 
     case msg of
-        _   | not (prefix `T.isPrefixOf` msg) -> do
+        _   | client == 0 -> do
                 WS.sendTextData ("Facebook login " `mappend` url :: Text)
-            | any ($ fst client)
-                [T.null, T.any isPunctuation, T.any isSpace] ->
-                    WS.sendTextData ("Facbook code invalid" :: Text)
             | clientExists client clients ->
                 WS.sendTextData ("User already exists" :: Text)
             | otherwise -> do
@@ -79,6 +79,40 @@ application state rq = do
                     broadcast (fst client `mappend` " joined") s'
                     return s'
                 talk state client
+-}
+
+application :: MVar ServerState -> WS.Request -> WS.WebSockets WS.Hybi10 ()
+application state rq = do
+    WS.acceptRequest rq
+    WS.getVersion >>= liftIO . putStrLn . ("Client version: " ++)
+    sink <- WS.getSink
+    msg <- WS.receiveData
+    clients <- liftIO $ readMVar state
+    url <- liftIO fbUrl
+
+    WS.sendTextData ("WTF1" :: Text)
+
+    let prefix = "Facebook code "
+    let code = T.unpack $ T.drop (T.length prefix) msg
+    e <- liftIO $ fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) ("code", code)
+
+    WS.sendTextData ("WTF2" :: Text)
+
+    case e of
+        Nothing -> WS.sendTextData ("Facebook login " `mappend` url :: Text)
+        Just e -> do
+            let client = (e, sink)
+            if clientExists client clients
+                then WS.sendTextData ("User already exists" :: Text)
+                else do
+                    liftIO $ modifyMVar_ state $ \s -> do
+                        let s' = addClient client s
+                        WS.sendSink sink $ WS.textData $
+                            "Welcome! Users: " `mappend`
+                            T.intercalate ", " (map fst s)
+                        broadcast (fst client `mappend` " joined") s'
+                        return s'
+                    talk state client
 
 websocket :: IO ()
 websocket = do
