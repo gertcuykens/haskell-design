@@ -3,5 +3,4 @@ sudo apt-get freeglut3-dev
 #ghc make install
 #haskell-platform make install
 cabal update
-cabal install websockets
-cabal install fb
+cabal install chat.cabal
