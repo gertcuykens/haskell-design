@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
 module Server (
-    websocket
+    chatServer
 ) where
 
 import Data.Char (isPunctuation, isSpace)
@@ -77,7 +77,7 @@ application state rq = do
                         return s'
                     talk state client
 
-websocket :: IO ()
-websocket = do
+chatServer :: IO ()
+chatServer = do
     state <- newMVar []
     WS.runServer "0.0.0.0" 9160 $ application state

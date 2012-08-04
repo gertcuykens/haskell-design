@@ -2,12 +2,12 @@ module Main (
   main
 ) where
 
-import Server
+import Chat
 import Login
 import Db
 
 main :: IO ()
 main = do
-    websocket
+    chatServer
     --couchTest
     --fbTest
