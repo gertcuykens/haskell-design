@@ -20,12 +20,12 @@ function onMessage(event) {
     $('#messages').append(p);
     $('#messages').animate({scrollTop: $('#messages')[0].scrollHeight});
     if(event.data.match(/^[^:]* joined/)) {
-        var user = event.data.replace(/ .*/, '');
+        var user = event.data.replace(/ joined/, '');
         users.push(user);
         refreshUsers();
     }
     if(event.data.match(/^[^:]* disconnected/)) {
-        var user = event.data.replace(/ .*/, '');
+        var user = event.data.replace(/ disconnected/, '');
         var idx = users.indexOf(user);
         users = users.slice(0, idx).concat(users.slice(idx + 1));
         refreshUsers();
@@ -34,24 +34,22 @@ function onMessage(event) {
 
 $(document).ready(function () {
     $('#join-form').submit(function () {
-        $('#warnings').html('');
-        $('#join').append('Connecting...');
-        var code = $('#user').val();
+        $('#join-section').hide();
+        $('#warnings').html('Connecting');
         var ws = createWebSocket('/');
-        ws.onopen = function() {
-            ws.send('Facebook code ' + code);
-        };
+        ws.onopen = function() {ws.send('Facebook Code ' + code)}
         ws.onmessage = function(event) {
-            if (event.data.match('^Facebook url ')){
-                alert(event.data)
+            if (event.data.match('^Facebook Login ')){
+                document.location=event.data.match('https.*')+'&state=chat'
                 return true
             }
-            if (event.data.match('^Welcome! Users: ')){
-                var str = event.data.replace(/^Welcome! Users: /, '');
+            if (event.data.match('^Facebook Users ')){
+                var str = event.data.replace(/^Facebook Users /, '');
                 if(str != "") {
                     users = str.split(", ");
                     refreshUsers();
                 }
+                $('#warnings').html('');
                 $('#join-section').hide();
                 $('#chat-section').show();
                 $('#users-section').show();
@@ -67,4 +65,6 @@ $(document).ready(function () {
             ws.close();
         };
     });
+    try{var code = document.URL.match('code=.*')[0].replace(/^.*code=/,'');$('#join-form').submit()}
+    catch(e){var code = 'facebook';}
 });

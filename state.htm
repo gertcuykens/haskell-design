@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>State Redirection</title>
+    </head>
+    <body>
+        <script>
+			var state = document.URL.match('state=.*&')
+            var code = document.URL.match('code=.*')
+			switch(state[0])
+			{
+				case 'state=chat&':
+					document.location="/chat.htm?"+code
+					break
+				case 'state=user&':
+					document.location="/chat.htm?"+code
+					break
+				default:
+					document.location="/"
+			}
+        </script>
+    </body>
+</html>
