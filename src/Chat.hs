@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
-module Server (
+module Chat (
     chatServer
 ) where
 
