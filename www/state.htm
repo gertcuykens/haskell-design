@@ -2,22 +2,18 @@
 <html>
     <head>
         <title>State Redirection</title>
-    </head>
-    <body>
-        <script>
+    	<script>
 			var state = document.URL.match('state=.*&')
-            var code = document.URL.match('code=.*')
+		    var code = document.URL.match('code=.*')
+		    if (!(state instanceof Array)){state=['default']}
 			switch(state[0])
 			{
 				case 'state=chat&':
 					document.location="/chat.htm?"+code
 					break
-				case 'state=user&':
-					document.location="/chat.htm?"+code
-					break
 				default:
-					document.location="/"
+					document.location="/chat.htm"
 			}
-        </script>
-    </body>
+    	</script>
+	</head>
 </html>
