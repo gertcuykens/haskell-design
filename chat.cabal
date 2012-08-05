@@ -6,7 +6,6 @@ license: AllRightsReserved
 license-file: ""
 description:  
 data-dir: ""
-extra-source-files: /home/gert/Downloads/haskell-design/www
  
 executable chat
     build-depends: base -any, bytestring -any, couchdb-conduit -any,
