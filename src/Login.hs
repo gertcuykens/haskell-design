@@ -17,7 +17,7 @@ app :: FB.Credentials
 app = FB.Credentials "localhost" "249348058430770" "..."
 
 url :: FB.RedirectUrl
-url = "http://localhost/state.htm"
+url = "http://localhost:8000/state.htm"
 
 perms :: [FB.Permission]
 perms = ["user_about_me", "email"]
