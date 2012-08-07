@@ -4,3 +4,7 @@
 #haskell-platform make install
 cabal update
 cabal install chat.cabal
+Prelude> :set -isrc 
+Prelude> :l src/Main.hs 
+*Main> main
+#http://localhost:8000/
