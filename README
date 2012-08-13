@@ -2,9 +2,13 @@
 #sudo apt-get freeglut3-dev
 #ghc make install
 #haskell-platform make install
+
 cabal update
 cabal install chat.cabal
-Prelude> :set -isrc 
+
+ghci
+Prelude> :set -isrc
 Prelude> :l src/Main.hs 
-*Main> main
+*Main> :main
+
 #http://localhost:8000/

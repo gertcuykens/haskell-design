@@ -1,5 +1,4 @@
 module Web (webServer) where
-
 import Happstack.Server
 
 conf :: Conf

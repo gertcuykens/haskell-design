@@ -1,15 +1,11 @@
 module Main where
-
 import Control.Concurrent
 import Chat
-import Login
 import Web
-import Db
 
 main :: IO ()
 main = do
+    print "http://localhost:8000"
     forkIO chatServer
     webServer
-    --couchServer
-    --couchTest
-    --fbTest
+
