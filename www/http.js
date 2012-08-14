@@ -74,7 +74,7 @@ JSONform=function(v,j){for(i in j)try{v[i].value=j[i]}catch(e){}}
 function createWebSocket(path) {
     var host = window.location.hostname;
     if(host == '') host = 'localhost';
-    var uri = 'ws://' + host + ':9160' + path;
+    var uri = 'ws://' + host + path;
     var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
     return new Socket(uri);
 }

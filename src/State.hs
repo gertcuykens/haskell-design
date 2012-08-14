@@ -1,22 +1,37 @@
+module State (State,newS,readS,writeS) where
+import Control.Concurrent (MVar, newMVar, newEmptyMVar, modifyMVar_, readMVar)
+import Data.Text (Text)
+
+type State = MVar [Text]
+
+newS :: IO State
+newS = do
+    v <- newMVar []
+    return v
+
+readS :: State -> IO [Text]
+readS s = do
+    v <- readMVar s
+    return v
+
+writeS :: [Text] -> State -> IO ()
+writeS msg s = modifyMVar_ s $ \_ -> return (msg)
+
+{-
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving,
     MultiParamTypeClasses, TemplateHaskell, TypeFamilies, RecordWildCards #-}
-module State where
-{-
 import Control.Applicative  ( (<$>) )
 import Control.Exception    ( bracket )
 import Control.Monad        ( msum )
 import Control.Monad.Reader ( ask )
 import Control.Monad.State  ( get, put )
 import Data.Data            ( Data, Typeable )
-import Happstack.Server     ( Response, ServerPart, dir, nullDir, nullConf, ok
-                             , simpleHTTP, toResponse )
+import Happstack.Server     ( Response, ServerPart, dir, nullDir, nullConf, ok, simpleHTTP, toResponse )
 import Data.Acid            ( AcidState, Query, Update, makeAcidic, openLocalState )
 import Data.Acid.Advanced   ( query', update' )
 import Data.Acid.Local      ( createCheckpointAndClose )
 import Data.SafeCopy        ( base, deriveSafeCopy )
--}
 
-{-
 data CounterState = CounterState { count :: Integer }
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 

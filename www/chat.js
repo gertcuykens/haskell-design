@@ -1,7 +1,7 @@
 function createWebSocket(path) {
     var host = window.location.hostname;
     if(host == '') host = 'localhost';
-    var uri = 'ws://' + host + ':9160' + path;
+    var uri = 'ws://' + host + path;
     var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
     return new Socket(uri);
 }
@@ -36,7 +36,7 @@ $(document).ready(function () {
     $('#join-form').submit(function () {
         $('#join-section').hide();
         $('#warnings').html('Connecting');
-        var ws = createWebSocket('/');
+        var ws = createWebSocket(':9160');
         ws.onopen = function() {ws.send('Facebook Code ' + code)}
         ws.onmessage = function(event) {
             if (event.data.match('^Facebook Login ')){

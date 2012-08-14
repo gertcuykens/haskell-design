@@ -1,11 +1,13 @@
 module Main where
-import Control.Concurrent
+import Control.Concurrent (forkIO)
 import Chat
+import User
 import Web
 
 main :: IO ()
 main = do
-    print "http://localhost:8000"
+    print "Starting http://localhost:8000"
     forkIO chatServer
+    forkIO userServer
     webServer
-
+    print "Closed"
