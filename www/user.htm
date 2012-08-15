@@ -8,7 +8,8 @@
  </head>
  <body>
 
-  <form name="user" action="javascript:ws.send(JSON.stringify(formJSON(document.user)))">
+  <form name="user" action="javascript:ws.send(JSON.stringify(formJSON(document.user)));
+                                       console.log(JSON.stringify(formJSON(document.user)))">
    <label>city:</label>    <input name="city"   /><br/>
    <label>country:</label> <input name="country"/><br/>
    <label>phone:</label>   <input name="phone"  /><br/>

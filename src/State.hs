@@ -1,23 +1,35 @@
 module State (State,newS,readS,writeS) where
-import Control.Concurrent (MVar, newMVar, newEmptyMVar, modifyMVar_, readMVar)
-import Data.Text (Text)
+import Control.Concurrent (MVar, newMVar, modifyMVar_, readMVar)
+import Data.Text (Text, pack)
+import Facebook (UserId)
 
-type State = MVar [Text]
+type State = MVar [(UserId,Text)]
 
 newS :: IO State
 newS = do
-    v <- newMVar []
-    return v
+    s <- newMVar []
+    return s
 
-readS :: State -> IO [Text]
-readS s = do
-    v <- readMVar s
-    return v
+readS :: UserId -> State -> IO (Text)
+readS i s = do
+    xs <- readMVar s
+    let e = lookup i xs
+    case e of
+        Just e -> return (e)
+        _ -> return (pack "{}")
 
-writeS :: [Text] -> State -> IO ()
-writeS msg s = modifyMVar_ s $ \_ -> return (msg)
+delete :: Eq a => a -> [(a,b)] -> [(a,b)]
+delete i xs = [x|x<-xs,(fst x)/= i]
+
+writeS :: UserId -> Text -> State -> IO ()
+writeS i m s = modifyMVar_ s $ \xs -> do
+    let xs' = delete i xs
+    return ((i,m):xs')
 
 {-
+readS :: UserId -> State -> IO (Text)
+readS i s = do return (pack ("{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"))
+
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving,
     MultiParamTypeClasses, TemplateHaskell, TypeFamilies, RecordWildCards #-}
 import Control.Applicative  ( (<$>) )
@@ -41,11 +53,11 @@ initialCounterState :: CounterState
 initialCounterState = CounterState 0
 
 incCountBy :: Integer -> Update CounterState Integer
-incCountBy n =
-    do c@CounterState{..} <- get
-       let newCount = count + n
-       put $ c { count = newCount }
-       return newCount
+incCountBy n = do
+    c@CounterState{..} <- get
+    let newCount = count + n
+    put $ c { count = newCount }
+    return newCount
 
 peekCount :: Query CounterState Integer
 peekCount = count <$> ask
@@ -74,7 +86,8 @@ data PeekCount  = PeekCount
 data IncCountBy = IncCountBy Integer
 
 dbServer :: IO ()
-dbServer = do bracket (openLocalState initialCounterState)
-           (createCheckpointAndClose)
-           (\acid -> simpleHTTP nullConf (handlers acid))
+dbServer = do
+    bracket (openLocalState initialCounterState)
+    (createCheckpointAndClose)
+    (\acid -> simpleHTTP nullConf (handlers acid))
 -}

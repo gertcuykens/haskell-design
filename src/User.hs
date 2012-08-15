@@ -12,18 +12,20 @@ import qualified Data.ByteString.Char8 as C
 import qualified Login as FB
 import qualified State as ST
 
-loop :: ST.State -> WS.WebSockets WS.Hybi10 ()
-loop state = flip WS.catchWsError catchDisconnect $ do
+catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
+catchDisconnect e =
+    case fromException e of
+        Just WS.ConnectionClosed -> liftIO $ T.putStrLn "Connection Closed"
+        _ -> return ()
+
+loop :: FB.UserId -> ST.State -> WS.WebSockets WS.Hybi10 ()
+loop i state = flip WS.catchWsError catchDisconnect $ do
+    s <- liftIO $ ST.readS i state
+    WS.sendTextData (s)
     msg <- WS.receiveData
     liftIO $ T.putStrLn msg
-    liftIO $ ST.writeS [msg] state
-    s <- liftIO $ ST.readS state
-    WS.sendTextData (head s)
-    loop state
-    where
-        catchDisconnect e = case fromException e of
-            Just WS.ConnectionClosed -> liftIO $ T.putStrLn "Connection Closed"
-            _ -> return ()
+    liftIO $ ST.writeS i msg state
+    loop i state
 
 application :: ST.State -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 application state rq = do
@@ -33,11 +35,10 @@ application state rq = do
     liftIO $ T.putStrLn msg
     let prefix = "Facebook Code "
     let code = T.unpack $ T.drop (T.length prefix) msg
-    e <- liftIO (try $ FB.fbName  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (Maybe Text)))
-    case e of
+    i <- liftIO (try $ FB.fbId  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
+    case i of
+        Right i -> loop i state
         Left _ -> do url <- liftIO FB.fbUrl; WS.sendTextData ("Facebook Login " `mappend` url :: Text)
-        Right Nothing -> liftIO $ T.putStrLn "Facebook Error"
-        Right (Just e) -> loop state
 
 userServer :: IO ()
 userServer = do

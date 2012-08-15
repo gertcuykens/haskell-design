@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
 module Login (
+    UserId,
     fbUrl,
     fbEmail,
     fbName,
+    fbId,
     fbTest
 ) where
 
@@ -13,8 +15,10 @@ import Data.ByteString.Internal (ByteString)
 import Control.Exception
 import qualified Data.ByteString.Char8 as C
 
+type UserId = FB.UserId
+
 app :: FB.Credentials
-app = FB.Credentials "localhost" "249348058430770" "..."
+app = FB.Credentials "localhost" "249348058430770" "***"
 
 url :: FB.RedirectUrl
 url = "http://localhost:8000/state.htm"
@@ -38,6 +42,12 @@ fbName c = withManager $ \manager -> FB.runFacebookT app manager $ do
     t <- FB.getUserAccessTokenStep2 url [c]
     u <- FB.getUser "me" [] (Just t)
     return $ FB.userName u
+
+fbId :: FB.Argument -> IO (FB.UserId)
+fbId c = withManager $ \manager -> FB.runFacebookT app manager $ do
+    t <- FB.getUserAccessTokenStep2 url [c]
+    u <- FB.getUser "me" [] (Just t)
+    return $ FB.userId u
 
 fbTest :: IO ()
 fbTest = do
