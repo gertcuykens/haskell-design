@@ -14,7 +14,7 @@ import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Internal (Text)
 import Data.Text.Lazy.Encoding (decodeUtf8,encodeUtf8)
 
-import Facebook (UserId)
+import Login (UserId)
 
 data User = User { city :: Text
                  , country :: Text

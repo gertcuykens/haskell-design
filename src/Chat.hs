@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Chat (chatServer) where
 
 import Data.Char (isPunctuation, isSpace)
@@ -67,9 +67,9 @@ application state rq = do
     msg <- WS.receiveData
     let prefix = "Facebook Code "
     let code = T.unpack $ T.drop (T.length prefix) msg
-    e <- liftIO (try $ FB.fbName  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (Maybe Text)))
+    e <- liftIO (try $ FB.name  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (Maybe Text)))
     case e of
-        Left _ -> do url <- liftIO FB.fbUrl; WS.sendTextData ("Facebook Login " `mappend` url :: Text)
+        Left _ -> do url <- liftIO FB.url; WS.sendTextData ("Facebook Login " `mappend` url :: Text)
         --Left e -> liftIO $ print $ "error: " ++ show (e :: SomeException)
         Right Nothing -> return ()
         Right (Just e) -> do

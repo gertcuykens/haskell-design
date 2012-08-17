@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
-module File (fileServer) where
+{-# LANGUAGE OverloadedStrings #-}
+module Picture (Png,fileServer) where
 
 import Data.Monoid (mappend)
 import Control.Exception
@@ -12,6 +12,8 @@ import qualified Data.ByteString.Char8 as C (pack)
 import qualified Network.WebSockets as WS
 import qualified Login as FB
 import qualified Json as JS
+
+type Png = String
 
 catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
 catchDisconnect e =
@@ -36,10 +38,10 @@ application state rq = do
     liftIO $ S.putStrLn msg
     let prefix = "Facebook Code "
     let code = S.unpack $ S.drop (S.length prefix) msg
-    i <- liftIO (try $ FB.fbId  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
+    i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
         Right i -> loop i state
-        Left _ -> do url <- liftIO FB.fbUrl; WS.sendTextData ("Facebook Login " `mappend` url :: S.Text)
+        Left _ -> do url <- liftIO FB.url; WS.sendTextData ("Facebook Login " `mappend` url :: S.Text)
 
 fileServer :: IO ()
 fileServer = do
