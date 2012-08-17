@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
-module User (jsonServer) where
+module File (fileServer) where
 
 import Data.Monoid (mappend)
 import Control.Exception
@@ -41,7 +41,7 @@ application state rq = do
         Right i -> loop i state
         Left _ -> do url <- liftIO FB.fbUrl; WS.sendTextData ("Facebook Login " `mappend` url :: S.Text)
 
-jsonServer :: IO ()
-jsonServer = do
+fileServer :: IO ()
+fileServer = do
     s <- JS.newS
-    WS.runServer "0.0.0.0" 9161 $ application s
+    WS.runServer "0.0.0.0" 9162 $ application s

@@ -8,6 +8,7 @@ main :: IO ()
 main = do
     print "Starting http://localhost:8000"
     forkIO chatServer
-    forkIO userServer
+    forkIO jsonServer
+    --forkIO fileServer
     webServer
     print "Closed"

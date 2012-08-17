@@ -7,13 +7,13 @@ license-file: ""
 data-dir: ""
  
 executable chat
-    build-depends: acid-state -any, base -any, bytestring -any,
-                   couchdb-conduit -any, fb -any, happstack-server -any,
-                   http-conduit -any, monad-control -any, mtl -any, resourcet -any,
-                   safecopy -any, syb -any, text -any, transformers -any,
-                   websockets -any
+    build-depends: acid-state -any, aeson -any, attoparsec -any,
+                   base -any, bytestring -any, couchdb-conduit -any, fb -any,
+                   happstack-server -any, http-conduit -any, monad-control -any,
+                   mtl -any, resourcet -any, safecopy -any, syb -any, text -any,
+                   transformers -any, websockets -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: User State Login Web Chat
+    other-modules: Json File Login Chat User Picture Web
  

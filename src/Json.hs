@@ -1,35 +1,81 @@
-module State (State,newS,readS,writeS) where
+{-# LANGUAGE OverloadedStrings #-}
+module Json (User,State,newS,readS,writeS) where
+
+import Control.Applicative
 import Control.Concurrent (MVar, newMVar, modifyMVar_, readMVar)
-import Data.Text (Text, pack)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad (mzero)
+
+import Data.Maybe
+import Data.Aeson
+import Data.Aeson.Encode (fromValue)
+import Data.Text.Lazy (toStrict)
+import Data.Text.Lazy.Builder (toLazyText)
+import Data.Text.Lazy.Internal (Text)
+import Data.Text.Lazy.Encoding (decodeUtf8,encodeUtf8)
+
 import Facebook (UserId)
 
-type State = MVar [(UserId,Text)]
+data User = User { city :: Text
+                 , country :: Text
+                 , phone :: Text
+                 , email :: Text}
+
+instance FromJSON User where
+    parseJSON (Object v) = User <$> v .: "city"
+                                <*> v .: "country"
+                                <*> v .: "phone"
+                                <*> v .: "email"
+    parseJSON _          = mzero
+
+instance ToJSON User where
+    toJSON (User a b c d)= object ["city" .= a
+                                  ,"country" .= b
+                                  ,"phone" .= c
+                                  ,"email" .= d]
+
+type State = MVar [(UserId,User)]
 
 newS :: IO State
 newS = do
     s <- newMVar []
     return s
 
-readS :: UserId -> State -> IO (Text)
+test::Text
+test="{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"
+
+jsonS :: User -> Text
+jsonS = toLazyText . fromValue . toJSON
+
+readS :: UserId -> State -> IO Text
 readS i s = do
     xs <- readMVar s
     let e = lookup i xs
     case e of
-        Just e -> return (e)
-        _ -> return (pack "{}")
+        Just e -> return (jsonS e)
+        _ -> return (jsonS (User "" "" "" ""))
+
+user:: Text -> User
+user msg = fromMaybe (error "invalid user json") (decode $ encodeUtf8 msg)
 
 delete :: Eq a => a -> [(a,b)] -> [(a,b)]
 delete i xs = [x|x<-xs,(fst x)/= i]
 
 writeS :: UserId -> Text -> State -> IO ()
 writeS i m s = modifyMVar_ s $ \xs -> do
+    let u = user m
     let xs' = delete i xs
-    return ((i,m):xs')
+    return ((i,u):xs')
+
+--import Data.Attoparsec.Text.Lazy
+--user msg = User "" "" "" ""
+--user msg = do
+--    let v = parse json (encodeUtf8 msg)
+--    case fromJSON v of
+--         Success a -> a
+--         Error s -> error s
 
 {-
-readS :: UserId -> State -> IO (Text)
-readS i s = do return (pack ("{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"))
-
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving,
     MultiParamTypeClasses, TemplateHaskell, TypeFamilies, RecordWildCards #-}
 import Control.Applicative  ( (<$>) )

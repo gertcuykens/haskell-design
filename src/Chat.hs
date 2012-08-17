@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings, NoMonomorphismRestriction #-}
 module Chat (chatServer) where
+
 import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
 import Data.Text (Text, pack)
