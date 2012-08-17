@@ -28,8 +28,9 @@ loop i state = flip WS.catchWsError catchDisconnect $ do
     liftIO $ JS.writeS i msg state
     loop i state
 
-application :: JS.State -> WS.Request -> WS.WebSockets WS.Hybi10 ()
-application state rq = do
+application :: WS.Request -> WS.WebSockets WS.Hybi10 ()
+application rq = do
+    state <- liftIO $ JS.newS
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
     msg <- WS.receiveData
@@ -42,6 +43,4 @@ application state rq = do
         Left _ -> do url <- liftIO FB.url; WS.sendTextData ("Facebook Login " `mappend` url :: S.Text)
 
 jsonServer :: IO ()
-jsonServer = do
-    s <- JS.newS
-    WS.runServer "0.0.0.0" 9161 $ application s
+jsonServer = WS.runServer "0.0.0.0" 9161 $ application

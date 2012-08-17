@@ -34,12 +34,10 @@ instance ToJSON User where
                                   ,"phone" .= c
                                   ,"email" .= d]
 
-type State = MVar [(UserId,User)]
+type State = MVar[(UserId,User)]
 
 newS :: IO State
-newS = do
-    s <- newMVar []
-    return s
+newS = newMVar []
 
 test::Text
 test="{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"

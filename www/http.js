@@ -23,6 +23,30 @@ xhr=function(o){
  return x
 }
 
+formURI=function(v){
+ var t=v.getElementsByTagName('input')
+ var s=''
+ for(i in t)if(t[i].type=='text')s+=encodeURIComponent(t[i].name)+'='+encodeURIComponent(t[i].value)+'&'
+ return s.slice(0,-1)
+}
+
+formJSON=function(v){
+ var t=v.getElementsByTagName('input')
+ var s=new Object()
+ for(i in t)if(t[i].type=='text')s[t[i].name]=t[i].value
+ return s
+}
+
+JSONform=function(v,j){for(i in j)try{v[i].value=j[i]}catch(e){}}
+
+function createWebSocket(path) {
+    var host = window.location.hostname;
+    if(host == '') host = 'localhost';
+    var uri = 'ws://' + host + path;
+    var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
+    return new Socket(uri);
+}
+
 preview=function(f,d){
  if (!f.type.match(/image.*/))return false
  d.classList.add('preview')
@@ -53,30 +77,6 @@ dropBox=function(d){
  d.addEventListener('dragenter',dragenter,false)
  d.addEventListener('dragover',dragover,false)
  d.addEventListener('drop',drop,false)
-}
-
-formURI=function(v){
- var t=v.getElementsByTagName('input')
- var s=''
- for(i in t)if(t[i].type=='text')s+=encodeURIComponent(t[i].name)+'='+encodeURIComponent(t[i].value)+'&'
- return s.slice(0,-1)
-}
-
-formJSON=function(v){
- var t=v.getElementsByTagName('input')
- var s=new Object()
- for(i in t)if(t[i].type=='text')s[t[i].name]=t[i].value
- return s
-}
-
-JSONform=function(v,j){for(i in j)try{v[i].value=j[i]}catch(e){}}
-
-function createWebSocket(path) {
-    var host = window.location.hostname;
-    if(host == '') host = 'localhost';
-    var uri = 'ws://' + host + path;
-    var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
-    return new Socket(uri);
 }
 
 dropBoxWS=function(ws,d){

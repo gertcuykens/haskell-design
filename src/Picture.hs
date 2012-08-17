@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Picture (Png, FileName, fileServer) where
+module Picture (fileServer) where
 
 import Data.Monoid (mappend)
 import Control.Exception
@@ -12,9 +12,7 @@ import qualified Data.ByteString.Char8 as C (pack)
 import qualified Network.WebSockets as WS
 import qualified Login as FB
 import qualified Json as JS
-
-type Png = String
-type FileName = String
+import File
 
 catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
 catchDisconnect e =
@@ -22,17 +20,19 @@ catchDisconnect e =
         Just WS.ConnectionClosed -> liftIO $ L.putStrLn "Connection Closed"
         _ -> return ()
 
-loop :: FB.UserId -> JS.State -> WS.WebSockets WS.Hybi10 ()
-loop i state = flip WS.catchWsError catchDisconnect $ do
-    s <- liftIO $ JS.readS i state
-    WS.sendTextData (s)
+loop :: FB.UserId -> WS.WebSockets WS.Hybi10 ()
+loop i = flip WS.catchWsError catchDisconnect $ do
     msg <- WS.receiveData
-    liftIO $ L.putStrLn msg
-    liftIO $ JS.writeS i msg state
-    loop i state
+    liftIO $ L.writeFile "test/test.txt" msg
+    --liftIO $ L.putStrLn msg
+    --case msg of
+    --s <- liftIO $ JS.readS i state
+    WS.sendTextData ("ok"::L.Text)
+    --liftIO $ JS.writeS i msg state
+    loop i
 
-application :: JS.State -> WS.Request -> WS.WebSockets WS.Hybi10 ()
-application state rq = do
+application :: WS.Request -> WS.WebSockets WS.Hybi10 ()
+application rq = do
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
     msg <- WS.receiveData
@@ -41,10 +41,8 @@ application state rq = do
     let code = S.unpack $ S.drop (S.length prefix) msg
     i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
-        Right i -> loop i state
+        Right i -> loop i
         Left _ -> do url <- liftIO FB.url; WS.sendTextData ("Facebook Login " `mappend` url :: S.Text)
 
 fileServer :: IO ()
-fileServer = do
-    s <- JS.newS
-    WS.runServer "0.0.0.0" 9162 $ application s
+fileServer = WS.runServer "0.0.0.0" 9162 $ application

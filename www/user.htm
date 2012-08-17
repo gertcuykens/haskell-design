@@ -8,7 +8,7 @@
  </head>
  <body>
 
-  <form name="user" action="javascript:ws.send(JSON.stringify(formJSON(document.user)));
+  <form name="user" action="javascript:ws1.send(JSON.stringify(formJSON(document.user)));
                                        console.log(JSON.stringify(formJSON(document.user)))">
    <label>city:</label>    <input name="city"   /><br/>
    <label>country:</label> <input name="country"/><br/>
@@ -21,9 +21,9 @@
    try{var code = document.URL.match('code=.*')[0].replace(/^.*code=/,'')}
    catch(e){var code = 'facebook'}
 
-   var ws = createWebSocket(':9161')
-   ws.onopen = function(){ws.send('Facebook Code '+ code)}
-   ws.onmessage = function(event){
+   var ws1 = createWebSocket(':9161')
+   ws1.onopen = function(){ws1.send('Facebook Code '+ code)}
+   ws1.onmessage = function(event){
     if (event.data.match('^Facebook Login ')){
         document.location=event.data.match('https.*')+'&state=user'
         return true
@@ -32,11 +32,21 @@
     JSONform(document.user,JSON.parse(event.data))
    }
 
+   var ws2 = createWebSocket(':9162')
+   ws2.onopen = function(){ws2.send('Facebook Code '+ code)}
+   ws2.onmessage = function(event){
+    if (event.data.match('^Facebook Login ')){
+        document.location=event.data.match('https.*')+'&state=user'
+        return true
+    }
+    console.log(event.data)
+   }
+
    var img=document.createElement('img')
    img.setAttribute('id','picture')
    img.setAttribute('alt','picture')
    img.setAttribute('src','picture.png')
-   dropBoxWS(ws,img)
+   dropBoxWS(ws2,img)
    document.body.appendChild(img)
   </script>
 

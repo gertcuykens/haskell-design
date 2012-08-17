@@ -1,7 +1,7 @@
-module File () where
+module File (save,load) where
 
+import qualified Data.Text.Lazy.Internal as L (Text)
 import Login (UserId)
-import Picture (Png,FileName)
 
 --path :: UserId -> FileName
 --path = u + f
@@ -12,9 +12,8 @@ import Picture (Png,FileName)
 --f :: Png
 --f = "hello"
 
-save :: FilePath -> Png -> IO ()
-save p _ = writeFile p ""
-save p f = writeFile p f
+save :: FilePath -> String -> IO ()
+save = writeFile
 
-load :: FilePath -> IO ()
-load p = readFile
+load :: FilePath -> IO String
+load = readFile
