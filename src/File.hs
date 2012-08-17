@@ -1,11 +1,20 @@
 module File () where
 
 import Login (UserId)
-import Picture (Png)
+import Picture (Png,FileName)
 
---path:: UserId -> ()
---path= u + f
+--path :: UserId -> FileName
+--path = u + f
 
-save :: FilePath -> Png ->IO()
+--p :: FilePath
+--p = "test/test.txt"
+
+--f :: Png
+--f = "hello"
+
+save :: FilePath -> Png -> IO ()
 save p _ = writeFile p ""
 save p f = writeFile p f
+
+load :: FilePath -> IO ()
+load p = readFile

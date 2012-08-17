@@ -16,16 +16,24 @@ main = do
     print "Closed"
 
 {-
-fbTest :: IO ()
-fbTest = do
-    u <- fbUrl
+import File
+test :: IO ()
+test = do
+    save ("test/test.txt") "hello"
+    print (load "test/test.txt")
+
+import Login
+import qualified Data.ByteString.Char8 as C (pack)
+test :: IO ()
+test = do
+    u <- url
     print u
 
     --a <- readLn
-    --e <- try . fbEmail $ a
+    --e <- try . email $ a
 
     let a = ("code","test")
-    e <- try . fbEmail $ (\(x,y) -> (C.pack x, C.pack y)) a
+    e <- try . email $ (\(x,y) -> (C.pack x, C.pack y)) a
     case e of
         Left e -> print $ "error: " ++ show (e :: SomeException)
         Right Nothing -> print "doh!"

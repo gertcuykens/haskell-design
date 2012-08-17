@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Picture (Png,fileServer) where
+module Picture (Png, FileName, fileServer) where
 
 import Data.Monoid (mappend)
 import Control.Exception
@@ -14,6 +14,7 @@ import qualified Login as FB
 import qualified Json as JS
 
 type Png = String
+type FileName = String
 
 catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
 catchDisconnect e =
