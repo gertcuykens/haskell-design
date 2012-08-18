@@ -1,4 +1,3 @@
-// Copyright(c) gert.cuykens@gmail.com
 xhr=function(o){
  var statBox=document.createElement('progress')
  statBox.value=0
@@ -49,8 +48,6 @@ function createWebSocket(path) {
 
 preview=function(f,d){
  if (!f.type.match(/image.*/))return false
- d.classList.add('preview')
- d.file=f
  var reader=new FileReader()
  //reader.addEventListener('load',(function(i){return function(e){i.src=e.target.result}})(d),false)
  reader.onload=(function(i){return function(e){i.src=e.target.result}})(d)
@@ -79,17 +76,12 @@ dropBox=function(d){
  d.addEventListener('drop',drop,false)
 }
 
-dropBoxWS=function(ws,d){
+dropBoxWS=function(s,d){
  var dragenter=function(e){e.stopPropagation();e.preventDefault()}
  var dragover=function(e){e.stopPropagation();e.preventDefault()}
- var drop=function(e){
-  e.stopPropagation()
-  e.preventDefault()
+ var drop=function(e){e.stopPropagation();e.preventDefault()
   var f = e.dataTransfer.files
-  for (var i=0;i<f.length;i++){
-   preview(f[i],d)
-   ws.send(f[i])
-  }
+  for (var i=0;i<f.length;i++){preview(f[i],d);s.send(f[i])}
  }
  d.addEventListener('dragenter',dragenter,false)
  d.addEventListener('dragover',dragover,false)

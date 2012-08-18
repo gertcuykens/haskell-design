@@ -3,8 +3,7 @@ module Login (UserId,url,email,name,uid) where
 
 import qualified Facebook as FB
 import Network.HTTP.Conduit (withManager)
-import Control.Exception
-import Data.Text
+import Data.Text (Text)
 
 type UserId = FB.UserId
 
