@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module User (jsonServer) where
+module User (user) where
 
 import Data.Monoid (mappend)
 import Control.Exception
@@ -28,8 +28,8 @@ loop i state = flip WS.catchWsError catchDisconnect $ do
     liftIO $ JS.writeS i msg state
     loop i state
 
-application :: WS.Request -> WS.WebSockets WS.Hybi10 ()
-application rq = do
+user :: WS.Request -> WS.WebSockets WS.Hybi10 ()
+user rq = do
     state <- liftIO $ JS.newS
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
@@ -39,8 +39,9 @@ application rq = do
     let code = S.unpack $ S.drop (S.length prefix) msg
     i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
-        Right i -> loop i state
-        Left _ -> do url <- liftIO FB.url; WS.sendTextData ("Facebook Login " `mappend` url :: S.Text)
-
-jsonServer :: IO ()
-jsonServer = WS.runServer "0.0.0.0" 9161 $ application
+        Right i -> do
+            WS.sendTextData ("Facebook Uid " `mappend` i)
+            loop i state
+        Left _ -> do
+            url <- liftIO FB.url
+            WS.sendTextData ("Facebook Login " `mappend` url)

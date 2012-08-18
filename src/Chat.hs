@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Chat (chatServer) where
+module Chat (chat) where
 
 import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
@@ -60,8 +60,9 @@ talk state c@(u, _) = flip WS.catchWsError catchDisconnect $ do
                 return (i,s')
             _ -> return ()
 
-application :: MVar ServerState -> WS.Request -> WS.WebSockets WS.Hybi10 ()
-application state rq = do
+chat :: WS.Request -> WS.WebSockets WS.Hybi10 ()
+chat rq = do
+    state <- liftIO $ newMVar (0,[])
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client version: " ++)
     msg <- WS.receiveData
@@ -69,8 +70,10 @@ application state rq = do
     let code = T.unpack $ T.drop (T.length prefix) msg
     e <- liftIO (try $ FB.name  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (Maybe Text)))
     case e of
-        Left _ -> do url <- liftIO FB.url; WS.sendTextData ("Facebook Login " `mappend` url :: Text)
-        --Left e -> liftIO $ print $ "error: " ++ show (e :: SomeException)
+        Left _ -> do
+            url <- liftIO FB.url
+            WS.sendTextData ("Facebook Login " `mappend` url)
+            --Left e -> liftIO $ print $ "error: " ++ show (e :: SomeException)
         Right Nothing -> return ()
         Right (Just e) -> do
             s <- liftIO $ readMVar state
@@ -87,8 +90,3 @@ application state rq = do
                         broadcast (fst c `mappend` " joined") s'
                         return (i,s')
                     talk state c
-
-chatServer :: IO ()
-chatServer = do
-    state <- newMVar (0,[])
-    WS.runServer "0.0.0.0" 9160 $ application state

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Picture (fileServer) where
+module Picture (picture) where
 
 --import System.Directory
 
@@ -11,8 +11,6 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as C (pack)
 import qualified Network.WebSockets as WS
 import qualified Login as FB
-import qualified Json as JS
-import File
 
 catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
 catchDisconnect e =
@@ -29,8 +27,8 @@ loop i = flip WS.catchWsError catchDisconnect $ do
     --case msg of
     loop i
 
-application :: WS.Request -> WS.WebSockets WS.Hybi10 ()
-application rq = do
+picture :: WS.Request -> WS.WebSockets WS.Hybi10 ()
+picture rq = do
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
     msg <- WS.receiveData
@@ -39,8 +37,9 @@ application rq = do
     let code = B.unpack $ B.drop (B.length prefix) msg
     i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
-        Right i -> loop i
-        Left _ -> do url <- liftIO FB.url; WS.sendBinaryData ("Facebook Login " `mappend` url)
-
-fileServer :: IO ()
-fileServer = WS.runServer "0.0.0.0" 9162 $ application
+        Right i -> do
+            WS.sendBinaryData ("Facebook Uid " `mappend` i)
+            loop i
+        Left _ -> do
+            url <- liftIO FB.url
+            WS.sendBinaryData ("Facebook Login " `mappend` url)

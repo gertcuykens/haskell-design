@@ -4,16 +4,32 @@ cabal-version: >=1.2
 build-type: Simple
 license: AllRightsReserved
 license-file: ""
+description:
+ #sudo apt-get libgmp3-dev
+ #sudo apt-get freeglut3-dev
+ #ghc make install
+ #haskell-platform make install
+ .
+ cabal update
+ cabal install chat.cabal
+ .
+ ghci
+ Prelude> :set -isrc
+ Prelude> :l src/Main.hs 
+ *Main> :main
+ .
+ #http://localhost:8000/
+
 data-dir: ""
  
 executable chat
     build-depends: acid-state -any, aeson -any, attoparsec -any,
-                   base -any, bytestring -any, couchdb-conduit -any, fb -any,
-                   happstack-server -any, http-conduit -any, monad-control -any,
-                   mtl -any, resourcet -any, safecopy -any, syb -any, text -any,
-                   transformers -any, websockets -any
+                   base -any, bytestring -any, fb -any, happstack-server -any,
+                   http-conduit -any, monad-control -any, mtl -any, resourcet -any,
+                   safecopy -any, syb -any, text -any, transformers -any,
+                   websockets -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: Json File Login Chat User Picture Web
+    other-modules: Login Json Picture Chat User File
  

@@ -27,6 +27,10 @@
         document.location=event.data.match('https.*')+'&state=user'
         return true
     }
+    if (event.data.match('^Facebook Uid ')){
+        console.log(event.data)
+        return true
+    }
     console.log(event.data)
     JSONform(document.user,JSON.parse(event.data))
    }

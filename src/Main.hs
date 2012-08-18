@@ -1,44 +1,25 @@
 module Main where
 
 import Control.Concurrent (forkIO)
-import Chat
-import User
-import Picture
-import Web
+import Network.WebSockets (runServer)
+import Happstack.Server
+import Chat (chat)
+import User (user)
+import Picture (picture)
 
-import File
+conf :: Conf
+conf = Conf { port      = 8000
+            , validator = Nothing
+            , logAccess = Just logMAccess
+            , timeout   = 30}
 
-import Login
-import qualified Data.ByteString.Char8 as C (pack)
-import Control.Exception
+fileServing :: ServerPart Response
+fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
 
 main :: IO ()
 main = do
     print "Starting http://localhost:8000"
-    forkIO chatServer
-    forkIO jsonServer
-    forkIO fileServer
-    webServer
-
-----------------------------------
---           Test               --
-----------------------------------
-
-file :: IO ()
-file = do
-    save "test/test.txt" "hello2"
-    f <- load "test/test.txt"
-    print f
-
-login :: IO ()
-login = do
-    u <- url
-    print u
-    --a <- readLn
-    --e <- try . email $ a
-    let a = ("code","test")
-    e <- try . email $ (\(x,y) -> (C.pack x, C.pack y)) a
-    case e of
-        Left e -> print $ "error: " ++ show (e :: SomeException)
-        Right Nothing -> print "doh!"
-        Right (Just e) -> print e
+    forkIO $ runServer "0.0.0.0" 9160 $ chat
+    forkIO $ runServer "0.0.0.0" 9161 $ user
+    forkIO $ runServer "0.0.0.0" 9162 $ picture
+    simpleHTTP nullConf fileServing
