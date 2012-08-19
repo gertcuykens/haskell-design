@@ -9,6 +9,7 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as C (pack)
 import qualified Network.WebSockets as WS
 import qualified Login as FB
+import File
 
 --import qualified File as FI
 --liftIO $ FI.mkdir "test"
@@ -24,8 +25,9 @@ catchDisconnect e =
 
 loop :: FB.UserId -> WS.WebSockets WS.Hybi10 ()
 loop i = flip WS.catchWsError catchDisconnect $ do
-    msg <- WS.receiveData
-    WS.sendBinaryData (msg::B.ByteString)
+    m <- WS.receiveData
+
+    WS.sendBinaryData (m::B.ByteString)
     loop i
 
 picture :: WS.Request -> WS.WebSockets WS.Hybi10 ()
@@ -39,6 +41,7 @@ picture rq = do
     i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
         Right i -> do
+            --liftIO $ mkdir ("data/" ++ C.pack i)
             WS.sendTextData ("Facebook Uid " `mappend` i)
             loop i
         Left _ -> do
