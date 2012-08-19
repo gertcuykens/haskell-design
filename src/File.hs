@@ -1,8 +1,17 @@
-module File (save,load) where
+module File (save,mkdir) where
 
-import qualified Data.Text.Lazy.Internal as L (Text)
+import System.Directory
+import Control.Monad.IO.Class (liftIO)
+import qualified Data.ByteString.Lazy.Char8 as B
 import Login (UserId)
 
+mkdir :: UserId -> IO ()
+mkdir i = createDirectoryIfMissing False (show i)
+
+save :: FilePath -> B.ByteString -> IO ()
+save f = B.writeFile f
+
+{-
 --path :: UserId -> FileName
 --path = u + f
 
@@ -12,8 +21,7 @@ import Login (UserId)
 --f :: Png
 --f = "hello"
 
-save :: FilePath -> String -> IO ()
-save = writeFile
-
 load :: FilePath -> IO String
 load = readFile
+-}
+

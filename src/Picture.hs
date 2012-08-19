@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Picture (picture) where
 
---import System.Directory
-
 import Data.Monoid (mappend)
 import Control.Exception
 import Control.Monad.IO.Class (liftIO)
@@ -11,6 +9,12 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as C (pack)
 import qualified Network.WebSockets as WS
 import qualified Login as FB
+
+--import qualified File as FI
+--liftIO $ FI.mkdir "test"
+--liftIO $ FI.save ("test/"++show(i)) msg
+--liftIO $ B.putStrLn msg
+--case msg of
 
 catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
 catchDisconnect e =
@@ -21,10 +25,7 @@ catchDisconnect e =
 loop :: FB.UserId -> WS.WebSockets WS.Hybi10 ()
 loop i = flip WS.catchWsError catchDisconnect $ do
     msg <- WS.receiveData
-    liftIO $ B.writeFile "test/test.txt" msg
-    WS.sendBinaryData (msg)
-    --liftIO $ B.putStrLn msg
-    --case msg of
+    WS.sendBinaryData (msg::B.ByteString)
     loop i
 
 picture :: WS.Request -> WS.WebSockets WS.Hybi10 ()
