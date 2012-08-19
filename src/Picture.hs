@@ -39,8 +39,8 @@ picture rq = do
     i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
         Right i -> do
-            WS.sendBinaryData ("Facebook Uid " `mappend` i)
+            WS.sendTextData ("Facebook Uid " `mappend` i)
             loop i
         Left _ -> do
             url <- liftIO FB.url
-            WS.sendBinaryData ("Facebook Login " `mappend` url)
+            WS.sendTextData ("Facebook Login " `mappend` url)

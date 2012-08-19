@@ -76,6 +76,7 @@ chat rq = do
             --Left e -> liftIO $ print $ "error: " ++ show (e :: SomeException)
         Right Nothing -> return ()
         Right (Just e) -> do
+            WS.sendTextData ("Facebook Name " `mappend` e)
             s <- liftIO $ readMVar state
             sink <- WS.getSink
             let i = counter s

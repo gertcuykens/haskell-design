@@ -20,9 +20,7 @@ dropBoxWS=function(s,d){
 }
 
 preview=function(f,d){
- if (!f.type.match(/image.*/))return false
  var reader=new FileReader()
- //reader.addEventListener('load',(function(i){return function(e){i.src=e.target.result}})(d),false)
  reader.onload=(function(i){return function(e){i.src=e.target.result}})(d)
  reader.readAsDataURL(f)
 }
@@ -44,6 +42,8 @@ formJSON=function(v){
 JSONform=function(v,j){for(i in j)try{v[i].value=j[i]}catch(e){}}
 
 /*
+reader.addEventListener('load',(function(i){return function(e){i.src=e.target.result}})(d),false)
+
 progress = function(s){
  var progress=document.createElement('progress')
  progress.value=0

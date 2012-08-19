@@ -36,29 +36,32 @@ function onMessage(event) {
             return true
         }
         if (event.data.match('^Facebook Uid ')){return true}
-        console.log(event.data)
+        //console.log(event.data)
         JSONform(document.forms[0],JSON.parse(event.data))
     }
 
     var ws1 = createWebSocket(':9161')
     ws1.binaryType = 'blob'
     ws1.onopen = function(){
-        var img=document.getElementById('picture')
-        dropBoxWS(ws1,img)
-        var b=new Blob(['Facebook Code '+code],{"type":"text/plain"})
-        ws1.send(b)
-        console.log(ws1.bufferedAmount)
+        dropBoxWS(ws1,document.getElementById('picture'))
+        ws1.send('Facebook Code '+code)
+        //var b=new Blob(['Facebook Code '+code],{"type":"text/plain"})
+        //console.log(ws1.bufferedAmount)
     }
-    ws1.onmessage = function(b){
-        var f=b.data
-        f.type="image/png"
-        var d=document.getElementById('picture')
-        preview(f,d)
-        //if (b.data.match('^Facebook Login ')){
-        //    document.location=event.data.match('https.*')+'&state=user'
-        //    return true
-        //}
-        console.log(b.data)
+    ws1.onmessage = function(m){
+        if (m.data instanceof ArrayBuffer) console.log("ArrayBuffer")
+        if (m.data instanceof Blob){
+            //if (!m.data.type.match(/image.*/)){return false}
+            preview(m.data,document.getElementById('picture'))
+            console.log(m.data.type)
+        }
+        if (typeof m.data === "string"){
+            if (m.data.match('^Facebook Login ')){
+                document.location=m.data.match('https.*')+'&state=user'
+                return true
+            }
+            console.log("String")
+        }
     }
 
     var ws2 = createWebSocket(':9162');
