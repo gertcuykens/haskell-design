@@ -1,3 +1,5 @@
+* {margin:0px;padding:0px;}
+
 html {
     font-family: sans-serif;
     background-color: #335;
@@ -21,55 +23,70 @@ h2 {
 }
 
 div#main {
-    width: 600px;
+    /*width: 711px;*/
+    width: 713px;
     margin: 0px auto 0px auto;
-    padding: 0px;
     background-color: #fff;
-    height: 430px;
+    /*height: 385px;*/
+    height: 420px;
 }
 
 div#warnings {
     color: red;
     font-weight: bold;
-    margin: 10px;
+    height: 5px;
 }
 
-div#join-section {
+div#chat-section {
     float: left;
     margin: 10px;
 }
 
 div#users-section {
-    width: 170px;
-    float: right;
-    padding: 0px;
-    margin: 10px;
-}
-
-ul#users {
-    list-style-type: none;
-    padding-left: 0px;
-    height: 300px;
-    overflow: auto;
-}
-
-div#chat-section {
-    width: 390px;
     float: left;
     margin: 10px;
 }
 
-div#messages {
-    margin: 0px;
+div#profile-section {
+    margin: 10px;
+}
+
+form#profile-form {
+    margin-top:5px;
+}
+
+ul#users {
+    margin-top:5px;
+    list-style-type: none;
+    width: 170px;
     height: 300px;
     overflow: auto;
 }
 
-div#messages p {
-    margin: 0px;
-    padding: 0px;
+div#messages {
+    width: 332px;
+    margin-top:5px;
+    height: 300px;
+    overflow: auto;
 }
 
+div#footer {
+    text-align: right;
+}
+
+div.clear {
+    clear: both;
+}
+
+input {width:155px; margin-bottom:5px;}
+
+input[type="button"] {width:159px;}
+
+input#text   {width:340px;}
+input#talk   {margin-right:20px}
+input#update {margin-right:10px}
+
+/*
 div#footer {
     text-align: center;
     font-size: 12px;
@@ -81,6 +98,18 @@ div#footer a {
     color: #fff;
 }
 
-div.clear {
-    clear: both;
+progress#join-form{width:159px;}
+
+left:260px;top:12px;
+
+form {padding-top:10px;
+      width:250px;
+      text-align:right;}
+
+#picture{
+    width:146px;
+    height:113px;
 }
+*/
+         
+

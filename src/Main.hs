@@ -19,7 +19,7 @@ fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
 main :: IO ()
 main = do
     print "Starting http://localhost:8000"
-    forkIO $ runServer "0.0.0.0" 9160 $ chat
-    forkIO $ runServer "0.0.0.0" 9161 $ user
-    forkIO $ runServer "0.0.0.0" 9162 $ picture
+    forkIO $ runServer "0.0.0.0" 9160 $ user
+    forkIO $ runServer "0.0.0.0" 9161 $ picture
+    forkIO $ runServer "0.0.0.0" 9162 $ chat
     simpleHTTP nullConf fileServing

@@ -39,9 +39,6 @@ type State = MVar[(UserId,User)]
 newS :: IO State
 newS = newMVar []
 
-test::Text
-test="{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"
-
 jsonS :: User -> Text
 jsonS = toLazyText . fromValue . toJSON
 
@@ -72,6 +69,9 @@ writeS i m s = modifyMVar_ s $ \xs -> do
 --    case fromJSON v of
 --         Success a -> a
 --         Error s -> error s
+
+--test::Text
+--test="{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"
 
 {-
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving,

@@ -1,11 +1,3 @@
-function createWebSocket(path) {
-    var host = window.location.hostname;
-    if(host == '') host = 'localhost';
-    var uri = 'ws://' + host + path;
-    var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
-    return new Socket(uri);
-}
-
 var users = [];
 
 function refreshUsers() {
@@ -32,39 +24,64 @@ function onMessage(event) {
     }
 }
 
-$(document).ready(function () {
-    $('#join-form').submit(function () {
-        $('#join-section').hide();
-        $('#warnings').html('Connecting');
-        var ws = createWebSocket(':9160');
-        ws.onopen = function() {ws.send('Facebook Code ' + code)}
-        ws.onmessage = function(event) {
-            if (event.data.match('^Facebook Login ')){
-                document.location=event.data.match('https.*')+'&state=chat'
-                return true
+//$(document).ready(function () {
+    try{var code = document.URL.match('code=.*')[0].replace(/^.*code=/,'')}
+    catch(e){var code = ''}
+
+    var ws0 = createWebSocket(':9160')
+    ws0.onopen = function(){ws0.send('Facebook Code '+ code)}
+    ws0.onmessage = function(event){
+        if (event.data.match('^Facebook Login ')){
+            document.location=event.data.match('https.*')+'&state=chat'
+            return true
+        }
+        if (event.data.match('^Facebook Uid ')){return true}
+        console.log(event.data)
+        JSONform(document.forms[0],JSON.parse(event.data))
+    }
+
+    var ws1 = createWebSocket(':9161')
+    ws1.binaryType = 'blob'
+    ws1.onopen = function(){
+        var img=document.getElementById('picture')
+        dropBoxWS(ws1,img)
+        var b=new Blob(['Facebook Code '+code],{"type":"text/plain"})
+        ws1.send(b)
+        console.log(ws1.bufferedAmount)
+    }
+    ws1.onmessage = function(b){
+        var f=b.data
+        f.type="image/png"
+        var d=document.getElementById('picture')
+        preview(f,d)
+        //if (b.data.match('^Facebook Login ')){
+        //    document.location=event.data.match('https.*')+'&state=user'
+        //    return true
+        //}
+        console.log(b.data)
+    }
+
+    var ws2 = createWebSocket(':9162');
+    ws2.onopen = function(){ws2.send('Facebook Code ' + code)}
+    ws2.onmessage = function(event) {
+        $('#warnings').html('');
+        if (event.data.match('^Facebook Login ')){
+            document.location=event.data.match('https.*')+'&state=chat'
+            return true
+        } 
+        if (event.data.match('^Facebook Users ')){
+            var str = event.data.replace(/^Facebook Users /, '');
+            if(str != "") {
+                users = str.split(", ");
+                refreshUsers();
             }
-            if (event.data.match('^Facebook Users ')){
-                var str = event.data.replace(/^Facebook Users /, '');
-                if(str != "") {
-                    users = str.split(", ");
-                    refreshUsers();
-                }
-                $('#warnings').html('');
-                $('#join-section').hide();
-                $('#chat-section').show();
-                $('#users-section').show();
-                ws.onmessage = onMessage;
-                $('#message-form').submit(function () {
-                    var text = $('#text').val();
-                    ws.send(text);
-                    $('#text').val('');
-                });
-				return true;
-            }
-            $('#warnings').append(event.data);
-            ws.close();
-        };
-    });
-    try{var code = document.URL.match('code=.*')[0].replace(/^.*code=/,'');$('#join-form').submit()}
-    catch(e){var code = 'facebook';}
-});
+            ws2.onmessage = onMessage;
+			return true;
+        }
+        $('#warnings').append(event.data);
+    };
+
+//});
+
+//$('#warnings').html('Connecting');
+//ws.close

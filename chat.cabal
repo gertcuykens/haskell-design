@@ -4,22 +4,20 @@ cabal-version: >=1.2
 build-type: Simple
 license: AllRightsReserved
 license-file: ""
-description:
- #sudo apt-get libgmp3-dev
- #sudo apt-get freeglut3-dev
- #ghc make install
- #haskell-platform make install
- .
- cabal update
- cabal install chat.cabal
- .
- ghci
- Prelude> :set -isrc
- Prelude> :l src/Main.hs 
- *Main> :main
- .
- #http://localhost:8000/
-
+description: #sudo apt-get libgmp3-dev
+             #sudo apt-get freeglut3-dev
+             #ghc make install
+             #haskell-platform make install
+             .
+             cabal update
+             cabal install chat.cabal
+             .
+             ghci
+             Prelude> :set -isrc
+             Prelude> :l src/Main.hs
+             *Main> :main
+             .
+             #http://localhost:8000/
 data-dir: ""
  
 executable chat
