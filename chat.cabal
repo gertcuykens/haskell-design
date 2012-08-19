@@ -27,5 +27,5 @@ executable chat
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: Login Json Picture Chat User File
+    other-modules: Login Json Picture Chat User
  

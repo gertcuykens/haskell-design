@@ -4,18 +4,21 @@ module Picture (picture) where
 import Data.Monoid (mappend)
 import Control.Exception
 import Control.Monad.IO.Class (liftIO)
+import System.Directory
 
 import qualified Data.ByteString.Lazy.Char8 as B
-import qualified Data.ByteString.Char8 as C (pack)
+import qualified Data.ByteString.Char8 as C (pack,unpack)
 import qualified Network.WebSockets as WS
 import qualified Login as FB
-import File
 
---import qualified File as FI
---liftIO $ FI.mkdir "test"
---liftIO $ FI.save ("test/"++show(i)) msg
---liftIO $ B.putStrLn msg
---case msg of
+mkdir :: FilePath -> IO ()
+mkdir = createDirectoryIfMissing False
+
+save :: FilePath -> B.ByteString -> IO ()
+save = B.writeFile
+
+load :: FilePath -> IO B.ByteString
+load = B.readFile
 
 catchDisconnect :: SomeException -> WS.WebSockets WS.Hybi10 ()
 catchDisconnect e =
@@ -23,12 +26,13 @@ catchDisconnect e =
         Just WS.ConnectionClosed -> liftIO $ B.putStrLn "Connection Closed"
         _ -> return ()
 
-loop :: FB.UserId -> WS.WebSockets WS.Hybi10 ()
-loop i = flip WS.catchWsError catchDisconnect $ do
+loop :: String -> WS.WebSockets WS.Hybi10 ()
+loop p = flip WS.catchWsError catchDisconnect $ do
+    f <- liftIO $ load (p ++ "/picture.png")
+    WS.sendBinaryData (f)
     m <- WS.receiveData
-
-    WS.sendBinaryData (m::B.ByteString)
-    loop i
+    liftIO $ save (p ++ "/picture.png") m
+    loop p
 
 picture :: WS.Request -> WS.WebSockets WS.Hybi10 ()
 picture rq = do
@@ -41,9 +45,10 @@ picture rq = do
     i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
     case i of
         Right i -> do
-            --liftIO $ mkdir ("data/" ++ C.pack i)
+            let p = "data/" ++ C.unpack i
+            liftIO $ mkdir p
             WS.sendTextData ("Facebook Uid " `mappend` i)
-            loop i
+            loop p
         Left _ -> do
             url <- liftIO FB.url
             WS.sendTextData ("Facebook Login " `mappend` url)

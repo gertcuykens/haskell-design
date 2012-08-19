@@ -1,12 +1,12 @@
 module Main where
 
+import System.Directory
 import Control.Concurrent (forkIO)
 import Network.WebSockets (runServer)
 import Happstack.Server
 import Chat (chat)
 import User (user)
 import Picture (picture)
-import File
 
 conf :: Conf
 conf = Conf { port      = 8000
@@ -19,7 +19,7 @@ fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
 
 main :: IO ()
 main = do
-    mkdir "data"
+    createDirectoryIfMissing False "data"
     print "Starting http://localhost:8000"
     forkIO $ runServer "0.0.0.0" 9160 $ user
     forkIO $ runServer "0.0.0.0" 9161 $ picture
