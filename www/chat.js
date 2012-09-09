@@ -39,6 +39,7 @@ function onMessage(event) {
         //console.log(event.data)
         JSONform(document.forms[0],JSON.parse(event.data))
     }
+    ws0.onclose = function() {$('#warnings').append("Connection 0 Closed");} 
 
     var ws1 = createWebSocket(':9161')
     ws1.binaryType = 'blob'
@@ -49,20 +50,22 @@ function onMessage(event) {
         //console.log(ws1.bufferedAmount)
     }
     ws1.onmessage = function(m){
-        if (m.data instanceof ArrayBuffer) console.log("ArrayBuffer")
+        if (m.data instanceof ArrayBuffer) console.log("Type ArrayBuffer")
         if (m.data instanceof Blob){
             //if (!m.data.type.match(/image.*/)){return false}
+            //m.data.type='image/png'
             preview(m.data,document.getElementById('picture'))
-            console.log(m.data.type)
+            console.log("Type "+m.data.type)
         }
         if (typeof m.data === "string"){
             if (m.data.match('^Facebook Login ')){
-                document.location=m.data.match('https.*')+'&state=user'
+                document.location=m.data.match('https.*')+'&state=chat'
                 return true
             }
-            console.log("String")
+            console.log("Type String")
         }
     }
+    ws1.onclose = function() {$('#warnings').append("Connection 1 Closed");} 
 
     var ws2 = createWebSocket(':9162');
     ws2.onopen = function(){ws2.send('Facebook Code ' + code)}
@@ -83,6 +86,7 @@ function onMessage(event) {
         }
         $('#warnings').append(event.data);
     };
+    ws2.onclose = function() {$('#warnings').append("Connection 2 Closed");} 
 
 //});
 

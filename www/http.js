@@ -12,7 +12,7 @@ dropBoxWS=function(s,d){
  var drop=function(e){e.stopPropagation();e.preventDefault()
   var f = e.dataTransfer.files
   for (var i=0;i<f.length;i++){preview(f[i],d);s.send(f[i])}
-  console.log(s.bufferedAmount)
+  //console.log(s.bufferedAmount)
  }
  d.addEventListener('dragenter',dragenter,false)
  d.addEventListener('dragover',dragover,false)

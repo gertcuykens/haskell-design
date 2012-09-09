@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Login (UserId,url,email,name,uid) where
+module Login (url,email,name,uid) where
 
-import qualified Facebook as FB
 import Network.HTTP.Conduit (withManager)
 import Data.Text (Text)
-
-type UserId = FB.UserId
+import Data.ByteString.Char8 (unpack)
+import qualified Facebook as FB
 
 app :: FB.Credentials
-app = FB.Credentials "localhost" "249348058430770" "..."
+app = FB.Credentials "localhost" "249348058430770" "***"
 
 rrl :: FB.RedirectUrl
 rrl = "http://localhost:8000/state.htm"
@@ -31,8 +30,8 @@ name c = withManager $ \manager -> FB.runFacebookT app manager $ do
     u <- FB.getUser "me" [] (Just t)
     return $ FB.userName u
 
-uid :: FB.Argument -> IO (FB.UserId)
+uid :: FB.Argument -> IO String
 uid c = withManager $ \manager -> FB.runFacebookT app manager $ do
     t <- FB.getUserAccessTokenStep2 rrl [c]
     u <- FB.getUser "me" [] (Just t)
-    return $ FB.userId u
+    return $ unpack $ FB.userId u

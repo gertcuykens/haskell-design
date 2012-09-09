@@ -5,11 +5,10 @@ import Data.Monoid (mappend)
 import Control.Exception
 import Control.Monad.IO.Class (liftIO)
 import System.Directory
-
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as C (pack,unpack)
 import qualified Network.WebSockets as WS
-import qualified Login as FB
+import qualified Login as LG
 
 mkdir :: FilePath -> IO ()
 mkdir = createDirectoryIfMissing False
@@ -42,13 +41,13 @@ picture rq = do
     liftIO $ B.putStrLn msg
     let prefix = "Facebook Code "
     let code = B.unpack $ B.drop (B.length prefix) msg
-    i <- liftIO (try $ FB.uid  ((\(x,y) -> (C.pack x, C.pack y)) ("code", code)) :: IO (Either SomeException (FB.UserId)))
+    i <- liftIO (try $ LG.uid (C.pack "code",C.pack code) :: IO (Either SomeException String))
     case i of
         Right i -> do
-            let p = "data/" ++ C.unpack i
+            let p = "data/" ++ i
             liftIO $ mkdir p
-            WS.sendTextData ("Facebook Uid " `mappend` i)
+            WS.sendTextData (B.pack("Facebook Uid " ++ i))
             loop p
         Left _ -> do
-            url <- liftIO FB.url
+            url <- liftIO LG.url
             WS.sendTextData ("Facebook Login " `mappend` url)

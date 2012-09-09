@@ -1,7 +1,8 @@
 module Main where
 
 import System.Directory
-import Control.Concurrent (forkIO)
+import Control.Concurrent (forkIO,newMVar)
+import Control.Monad.IO.Class (liftIO)
 import Network.WebSockets (runServer)
 import Happstack.Server
 import Chat (chat)
@@ -19,9 +20,11 @@ fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
 
 main :: IO ()
 main = do
+    state0 <- liftIO $ newMVar []
+    state2 <- liftIO $ newMVar (0,[])
     createDirectoryIfMissing False "data"
     print "Starting http://localhost:8000"
-    forkIO $ runServer "0.0.0.0" 9160 $ user
+    forkIO $ runServer "0.0.0.0" 9160 $ user state0
     forkIO $ runServer "0.0.0.0" 9161 $ picture
-    forkIO $ runServer "0.0.0.0" 9162 $ chat
+    forkIO $ runServer "0.0.0.0" 9162 $ chat state2
     simpleHTTP nullConf fileServing
