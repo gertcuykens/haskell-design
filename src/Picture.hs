@@ -33,8 +33,8 @@ loop p = flip WS.catchWsError catchDisconnect $ do
     liftIO $ save (p ++ "/picture.png") m
     loop p
 
-picture :: WS.Request -> WS.WebSockets WS.Hybi10 ()
-picture rq = do
+picture :: FilePath -> WS.Request -> WS.WebSockets WS.Hybi10 ()
+picture d rq = do
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
     msg <- WS.receiveData
@@ -44,7 +44,7 @@ picture rq = do
     i <- liftIO (try $ LG.uid (C.pack "code",C.pack code) :: IO (Either SomeException String))
     case i of
         Right i -> do
-            let p = "data/" ++ i
+            let p = d ++ i
             liftIO $ mkdir p
             WS.sendTextData (B.pack("Facebook Uid " ++ i))
             loop p

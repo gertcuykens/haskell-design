@@ -4,7 +4,7 @@ module User (user) where
 import Data.Monoid (mappend)
 import Control.Exception
 import Control.Monad.IO.Class (liftIO)
-import Control.Concurrent (MVar)
+import Data.Acid
 import qualified Data.Text as S
 import qualified Data.Text.IO as S
 import qualified Data.Text.Lazy.Internal as L (Text)
@@ -20,16 +20,16 @@ catchDisconnect e =
         Just WS.ConnectionClosed -> liftIO $ L.putStrLn "Connection Closed"
         _ -> return ()
 
-loop :: MVar JS.UserState -> String -> WS.WebSockets WS.Hybi10 ()
-loop state i = flip WS.catchWsError catchDisconnect $ do
-    s <- liftIO $ JS.readS i state
+loop :: AcidState JS.KeyValue -> String -> WS.WebSockets WS.Hybi10 ()
+loop state k = flip WS.catchWsError catchDisconnect $ do
+    s <- liftIO $ JS.readS state k
     WS.sendTextData (s)
     msg <- WS.receiveData
     liftIO $ L.putStrLn msg
-    liftIO $ JS.writeS i msg state
-    loop state i
+    liftIO $ JS.writeS state k msg
+    loop state k
 
-user :: MVar JS.UserState -> WS.Request -> WS.WebSockets WS.Hybi10 ()
+user :: AcidState JS.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 user state rq = do
     WS.acceptRequest rq
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
@@ -37,11 +37,11 @@ user state rq = do
     liftIO $ S.putStrLn msg
     let prefix = "Facebook Code "
     let code = S.unpack $ S.drop (S.length prefix) msg
-    i <- liftIO (try $ LG.uid (C.pack "code",C.pack code) :: IO (Either SomeException String))
-    case i of
-        Right i -> do
-            WS.sendTextData (C.pack("Facebook Uid " ++ i))
-            loop state i
+    k <- liftIO (try $ LG.uid (C.pack "code",C.pack code) :: IO (Either SomeException String))
+    case k of
+        Right k -> do
+            WS.sendTextData (C.pack("Facebook Uid " ++ k))
+            loop state k
         Left _ -> do
             url <- liftIO LG.url
             WS.sendTextData ("Facebook Login " `mappend` url)

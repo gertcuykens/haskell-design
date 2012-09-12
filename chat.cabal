@@ -21,8 +21,9 @@ description: #sudo apt-get libgmp3-dev
 data-dir: ""
  
 executable chat
-    build-depends: aeson -any, base -any, bytestring -any,
-                   directory -any, fb -any, happstack-server -any, http-conduit -any,
+    build-depends: acid-state -any, aeson -any, base -any,
+                   bytestring -any, containers -any, directory -any, fb -any,
+                   happstack-server -any, http-conduit -any, mtl -any, safecopy -any,
                    text -any, transformers -any, websockets -any
     main-is: Main.hs
     buildable: True

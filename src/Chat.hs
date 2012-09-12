@@ -6,7 +6,7 @@ import Data.Monoid (mappend)
 import Data.Text (Text, pack)
 import Control.Exception
 import Control.Monad (forM_)
-import Control.Concurrent (MVar, newMVar, modifyMVar_, readMVar)
+import Control.Concurrent (MVar, modifyMVar_, readMVar)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
