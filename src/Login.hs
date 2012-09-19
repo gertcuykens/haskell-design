@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Login (url,email,name,uid) where
+module Login (User(..),url,usr,email,name,uid) where
 
 import Network.HTTP.Conduit (withManager)
 import Data.Text (Text)
 import Data.ByteString.Char8 (unpack)
 import qualified Facebook as FB
+
+type User = FB.User
 
 app :: FB.Credentials
 app = FB.Credentials "localhost" "249348058430770" "***"
@@ -16,22 +18,22 @@ perms :: [FB.Permission]
 perms = ["user_about_me", "email"]
 
 url :: IO Text
-url = withManager $ \manager -> FB.runFacebookT app manager $ FB.getUserAccessTokenStep1 rrl perms
+url = withManager $ \manager -> FB.runFacebookT app manager $ do
+    FB.getUserAccessTokenStep1 rrl perms
 
-email :: FB.Argument -> IO (Maybe Text)
-email c = withManager $ \manager -> FB.runFacebookT app manager $ do
+usr :: FB.Argument -> IO FB.User
+usr c = withManager $ \manager -> FB.runFacebookT app manager $ do
     t <- FB.getUserAccessTokenStep2 rrl [c]
     u <- FB.getUser "me" [] (Just t)
-    return $ FB.userEmail u
+    return u
 
-name :: FB.Argument -> IO (Maybe Text)
-name c = withManager $ \manager -> FB.runFacebookT app manager $ do
-    t <- FB.getUserAccessTokenStep2 rrl [c]
-    u <- FB.getUser "me" [] (Just t)
-    return $ FB.userName u
+email :: FB.User -> Text
+email u = case FB.userEmail u of
+              Just e -> e
 
-uid :: FB.Argument -> IO String
-uid c = withManager $ \manager -> FB.runFacebookT app manager $ do
-    t <- FB.getUserAccessTokenStep2 rrl [c]
-    u <- FB.getUser "me" [] (Just t)
-    return $ unpack $ FB.userId u
+name :: FB.User -> Text
+name u = case FB.userName u of
+              Just n -> n
+
+uid :: FB.User -> String
+uid u = unpack $ FB.userId u

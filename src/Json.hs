@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
-module Json (KeyValue(..),readS,writeS) where
+module Json (JsState(..),jsread,jswrite,jsopen,jsclose) where
 
 import Control.Applicative
 import Control.Concurrent (MVar, modifyMVar_, readMVar)
@@ -22,6 +22,7 @@ import System.IO
 import System.Exit
 import Data.SafeCopy
 import Data.Typeable
+
 import qualified Data.Map as MP
 
 data User = User { city :: Text
@@ -53,6 +54,8 @@ data KeyValue = KeyValue !(MP.Map Key Value)
 
 $(deriveSafeCopy 0 'base ''KeyValue)
 
+type JsState = AcidState KeyValue
+
 insertKey :: Key -> User -> Update KeyValue ()
 insertKey k v = do
     KeyValue m <- get
@@ -68,47 +71,23 @@ $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 text :: User -> Text
 text = toLazyText . fromValue . toJSON
 
-readS :: AcidState KeyValue -> String -> IO Text
-readS s k = do
+user:: Text -> Maybe User
+user =  decode . encodeUtf8
+
+jsread :: AcidState KeyValue -> String -> IO Text
+jsread s k = do
     u <- query s (LookupKey k)
     case u of
         Just u -> return (text u)
         _ -> return (text (User "" "" "" ""))
 
-user:: Text -> Maybe User
-user =  decode . encodeUtf8
-
-writeS :: AcidState KeyValue -> String -> Text -> IO ()
-writeS s k v = do
-    let u = fromMaybe (error "invalid user json") (user v)
+jswrite :: AcidState KeyValue -> String -> Text -> IO ()
+jswrite s k v = do
+    let u = fromMaybe (error "invalid json") (user v)
     update s (InsertKey k u)
 
-{-
-delete :: Eq a => a -> [(a,b)] -> [(a,b)]
-delete k xs = [x|x<-xs,(fst x)/= k]
+jsopen :: IO (AcidState KeyValue)
+jsopen = openLocalState (KeyValue MP.empty)
 
-readS :: MVar [(String,User)] -> String -> IO Text
-readS s k = do
-    xs <- readMVar s
-    let u = lookup k xs
-    case u of
-        Just u -> return (text u)
-        _ -> return (text (User "" "" "" ""))
-
-writeS :: MVar [(String,User)] -> String -> Text -> IO ()
-writeS s k v = modifyMVar_ s $ \xs -> do
-    let v' = fromMaybe (error "invalid user json") (user v)
-    let xs' = delete k xs
-    return ((k,v'):xs')
--}
-
---import Data.Attoparsec.Text.Lazy
---user msg = User "" "" "" ""
---user msg = do
---    let v = parse json (encodeUtf8 msg)
---    case fromJSON v of
---         Success a -> a
---         Error s -> error s
-
---test::Text
---test="{\"city\":\"test\",\"country\":\"test\",\"phone\":\"test\",\"email\":\"test\"}"
+jsclose :: AcidState KeyValue -> IO()
+jsclose = closeAcidState

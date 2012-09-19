@@ -28,7 +28,7 @@ function onMessage(event) {
     try{var code = document.URL.match('code=.*')[0].replace(/^.*code=/,'')}
     catch(e){var code = ''}
 
-    var ws0 = createWebSocket(':9160')
+    var ws0 = createWebSocket(':9160/acid')
     ws0.onopen = function(){ws0.send('Facebook Code '+ code)}
     ws0.onmessage = function(event){
         if (event.data.match('^Facebook Login ')){
@@ -39,9 +39,9 @@ function onMessage(event) {
         //console.log(event.data)
         JSONform(document.forms[0],JSON.parse(event.data))
     }
-    ws0.onclose = function() {$('#warnings').append("Connection 0 Closed");} 
+    ws0.onclose = function() {$('#warnings').append("Connection 0 Closed ");} 
 
-    var ws1 = createWebSocket(':9161')
+    var ws1 = createWebSocket(':9160/data')
     ws1.binaryType = 'blob'
     ws1.onopen = function(){
         dropBoxWS(ws1,document.getElementById('picture'))
@@ -65,9 +65,9 @@ function onMessage(event) {
             console.log("Type String")
         }
     }
-    ws1.onclose = function() {$('#warnings').append("Connection 1 Closed");} 
+    ws1.onclose = function() {$('#warnings').append("Connection 1 Closed ");} 
 
-    var ws2 = createWebSocket(':9162');
+    var ws2 = createWebSocket(':9160/chat');
     ws2.onopen = function(){ws2.send('Facebook Code ' + code)}
     ws2.onmessage = function(event) {
         $('#warnings').html('');
@@ -86,7 +86,7 @@ function onMessage(event) {
         }
         $('#warnings').append(event.data);
     };
-    ws2.onclose = function() {$('#warnings').append("Connection 2 Closed");} 
+    ws2.onclose = function() {$('#warnings').append("Connection 2 Closed ");} 
 
 //});
 
