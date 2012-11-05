@@ -1,35 +1,27 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
-module Json (JsState(..),jsread,jswrite,jsopen,jsclose) where
+module Json (AcidState, KeyValue, read', write', open', close') where
 
 import Control.Applicative
-import Control.Concurrent (MVar, modifyMVar_, readMVar)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (mzero)
-import Data.Maybe
+import Control.Monad.State (get, put)
+import Control.Monad.Reader (ask)
+
+import Data.Maybe (fromMaybe)
 import Data.Aeson hiding (Value)
 import Data.Aeson.Encode (fromValue)
-import Data.Text.Lazy (toStrict)
+--import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Internal (Text)
-import Data.Text.Lazy.Encoding (decodeUtf8,encodeUtf8)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 
-import Data.Acid
-import Control.Monad.State
-import Control.Monad.Reader
-import Control.Applicative
-import System.Environment
-import System.IO
-import System.Exit
-import Data.SafeCopy
-import Data.Typeable
+import Data.Acid (AcidState, Update, Query, update, query, openLocalState, closeAcidState, makeAcidic)
+import Data.SafeCopy (deriveSafeCopy, base)
+import Data.Typeable (Typeable)
 
-import qualified Data.Map as MP
+import qualified Data.Map as Map
 
-data User = User { city :: Text
-                 , country :: Text
-                 , phone :: Text
-                 , email :: Text}
-    deriving (Typeable)
+data User = User Text Text Text Text deriving (Typeable)
 
 $(deriveSafeCopy 0 'base ''User)
 
@@ -49,22 +41,20 @@ instance ToJSON User where
 type Key = String
 type Value = User
 
-data KeyValue = KeyValue !(MP.Map Key Value)
+data KeyValue = KeyValue !(Map.Map Key Value)
     deriving (Typeable)
 
 $(deriveSafeCopy 0 'base ''KeyValue)
 
-type JsState = AcidState KeyValue
-
 insertKey :: Key -> User -> Update KeyValue ()
 insertKey k v = do
     KeyValue m <- get
-    put (KeyValue (MP.insert k v m))
+    put (KeyValue (Map.insert k v m))
 
 lookupKey :: Key -> Query KeyValue (Maybe Value)
 lookupKey k = do
     KeyValue m <- ask
-    return (MP.lookup k m)
+    return (Map.lookup k m)
 
 $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 
@@ -74,20 +64,20 @@ text = toLazyText . fromValue . toJSON
 user:: Text -> Maybe User
 user =  decode . encodeUtf8
 
-jsread :: AcidState KeyValue -> String -> IO Text
-jsread s k = do
-    u <- query s (LookupKey k)
-    case u of
-        Just u -> return (text u)
-        _ -> return (text (User "" "" "" ""))
+read' :: AcidState KeyValue -> String -> IO Text
+read' s' k = do
+    u' <- query s' (LookupKey k)
+    case u' of
+        Just u ->return $ text u
+        Nothing -> return $ text (User "" "" "" "")
 
-jswrite :: AcidState KeyValue -> String -> Text -> IO ()
-jswrite s k v = do
+write' :: AcidState KeyValue -> String -> Text -> IO ()
+write' s' k v = do
     let u = fromMaybe (error "invalid json") (user v)
-    update s (InsertKey k u)
+    update s' (InsertKey k u)
 
-jsopen :: IO (AcidState KeyValue)
-jsopen = openLocalState (KeyValue MP.empty)
+open' :: IO (AcidState KeyValue)
+open' = openLocalState (KeyValue Map.empty)
 
-jsclose :: AcidState KeyValue -> IO()
-jsclose = closeAcidState
+close' :: AcidState KeyValue -> IO ()
+close' = closeAcidState
