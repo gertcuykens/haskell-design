@@ -39,7 +39,7 @@ function onMessage(event) {
         //console.log(event.data)
         JSONform(document.forms[0],JSON.parse(event.data))
     }
-    ws0.onclose = function() {$('#warnings').append("Connection 0 Closed ");} 
+    ws0.onclose = function() {$('#warnings').append("Connection 0 Closed ");}
 
     var ws1 = createWebSocket(':9160/data')
     ws1.binaryType = 'blob'
@@ -55,17 +55,17 @@ function onMessage(event) {
             //if (!m.data.type.match(/image.*/)){return false}
             //m.data.type='image/png'
             preview(m.data,document.getElementById('picture'))
-            console.log("Type "+m.data.type)
+            //console.log("Type "+m.data.type)
         }
         if (typeof m.data === "string"){
             if (m.data.match('^Facebook Login ')){
                 document.location=m.data.match('https.*')+'&state=chat'
                 return true
             }
-            console.log("Type String")
+            //console.log("Type String")
         }
     }
-    ws1.onclose = function() {$('#warnings').append("Connection 1 Closed ");} 
+    ws1.onclose = function() {$('#warnings').append("Connection 1 Closed ");}
 
     var ws2 = createWebSocket(':9160/chat');
     ws2.onopen = function(){ws2.send('Facebook Code ' + code)}
@@ -74,7 +74,7 @@ function onMessage(event) {
         if (event.data.match('^Facebook Login ')){
             document.location=event.data.match('https.*')+'&state=chat'
             return true
-        } 
+        }
         if (event.data.match('^Facebook Users ')){
             var str = event.data.replace(/^Facebook Users /, '');
             if(str != "") {
@@ -86,7 +86,7 @@ function onMessage(event) {
         }
         $('#warnings').append(event.data);
     };
-    ws2.onclose = function() {$('#warnings').append("Connection 2 Closed ");} 
+    ws2.onclose = function() {$('#warnings').append("Connection 2 Closed ");}
 
 //});
 

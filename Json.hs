@@ -2,11 +2,10 @@
 module Json (AcidState, KeyValue, read', write', open', close') where
 
 import Control.Applicative
-import Control.Monad.IO.Class (MonadIO, liftIO)
+--import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (mzero)
 import Control.Monad.State (get, put)
 import Control.Monad.Reader (ask)
-
 import Data.Maybe (fromMaybe)
 import Data.Aeson hiding (Value)
 import Data.Aeson.Encode (fromValue)
@@ -14,16 +13,17 @@ import Data.Aeson.Encode (fromValue)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Internal (Text)
 import Data.Text.Lazy.Encoding (encodeUtf8)
-
-import Data.Acid (AcidState, Update, Query, update, query, openLocalState, closeAcidState, makeAcidic)
+import Data.Acid (AcidState, Update, Query, update, query, openLocalStateFrom, closeAcidState, makeAcidic)
 import Data.SafeCopy (deriveSafeCopy, base)
 import Data.Typeable (Typeable)
-
 import qualified Data.Map as Map
 
+type Key = String
 data User = User Text Text Text Text deriving (Typeable)
+data KeyValue = KeyValue !(Map.Map Key User) deriving (Typeable)
 
 $(deriveSafeCopy 0 'base ''User)
+$(deriveSafeCopy 0 'base ''KeyValue)
 
 instance FromJSON User where
     parseJSON (Object v) = User <$> v .: "city"
@@ -38,20 +38,12 @@ instance ToJSON User where
                                   ,"phone"   .= c
                                   ,"email"   .= d]
 
-type Key = String
-type Value = User
-
-data KeyValue = KeyValue !(Map.Map Key Value)
-    deriving (Typeable)
-
-$(deriveSafeCopy 0 'base ''KeyValue)
-
 insertKey :: Key -> User -> Update KeyValue ()
 insertKey k v = do
     KeyValue m <- get
     put (KeyValue (Map.insert k v m))
 
-lookupKey :: Key -> Query KeyValue (Maybe Value)
+lookupKey :: Key -> Query KeyValue (Maybe User)
 lookupKey k = do
     KeyValue m <- ask
     return (Map.lookup k m)
@@ -77,7 +69,8 @@ write' s' k v = do
     update s' (InsertKey k u)
 
 open' :: IO (AcidState KeyValue)
-open' = openLocalState (KeyValue Map.empty)
+open' = openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
 
 close' :: AcidState KeyValue -> IO ()
 close' = closeAcidState
+

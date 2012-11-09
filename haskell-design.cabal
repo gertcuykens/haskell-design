@@ -1,0 +1,33 @@
+name: haskell-design
+version: 0.1.0.0
+synopsis: Haskell web design.
+
+description: sudo apt-get libgmp3-dev
+             sudo apt-get freeglut3-dev
+             configure --prefix=/home/gert/.ghc
+             .
+             cabal update
+             cabal install chat.cabal
+             .
+             ghci
+             Prelude> :set -isrc
+             Prelude> :l src/Main.hs
+             *Main> :main
+             .
+             http://localhost:8000/
+
+homepage: https://github.com/gertcuykens/haskell-design.git
+license: GPL-3
+license-file: LICENSE
+author: Gert Cuykens
+maintainer: gert.cuykens@gmail.com
+category: Web
+build-type: Simple
+cabal-version: >=1.8
+data-files: www/*.png, www/*.htm, www/*.js, www/*.css
+
+executable haskell-design
+    main-is: Main.hs
+    other-modules: Login, Json
+    build-depends: base ==4.6.*, http-conduit ==1.6.*, text ==0.11.*, transformers ==0.3.*, fb ==0.13.*, directory ==1.2.*, bytestring ==0.10.*, happstack-server ==7.1.*, websockets ==0.7.*, mtl ==2.1.*, aeson ==0.6.*, acid-state ==0.8.*, safecopy ==0.7.*, containers ==0.5.*
+

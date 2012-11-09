@@ -8,7 +8,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Facebook as FB
 
 app :: FB.Credentials
-app = FB.Credentials "localhost" "249348058430770" "..."
+app = FB.Credentials "localhost" "249348058430770" "***"
 
 rrl :: FB.RedirectUrl
 rrl = "http://localhost:8000/state.htm"

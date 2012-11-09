@@ -1,24 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Applicative
-import Control.Exception
+import Control.Exception (SomeException, try, fromException)
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (liftIO)
 import Control.Concurrent (forkIO, newMVar, MVar, modifyMVar_, readMVar)
-import System.Environment
-import System.IO
-import System.Exit
+--import Control.Applicative
+--import System.Environment
+--import System.IO (IOMode(ReadMode), withFile, hGetLine)
+--import System.Exit
 import System.Directory
-import Data.Char (isPunctuation, isSpace)
+--import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
+import Happstack.Server (ServerPart, Response, Browsing(EnableBrowsing), simpleHTTP, nullConf, serveDirectory)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified Data.Text.Lazy.Internal as L (Text)
-import qualified Data.Text.Lazy.IO as L
+--import qualified Data.Text.Lazy.Internal as L (Text)
+--import qualified Data.Text.Lazy.IO as L
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as B
-import Happstack.Server
 import qualified Network.WebSockets as WS
 import qualified Json as JS
 import qualified Login as FB
@@ -57,7 +57,7 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
     let i = inc (counter s)
     let l = clients s
     liftIO $ broadcast ( T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m) l
-    liftIO $ modifyMVar_ s' $ \s -> return (i,l)
+    liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
     loop1 s' c
     where
         catchDisconnect e =
@@ -73,13 +73,15 @@ loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
 loop2 a' u' = do
     a <- liftIO $ JS.read' a' $ FB.uid u'
     WS.sendTextData a
-    WS.receiveData >>= liftIO . JS.write' a' (FB.uid u') 
+    WS.receiveData >>= liftIO . JS.write' a' (FB.uid u')
     loop2 a' u'
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
 loop3 p = do
-    f <- liftIO $ B.readFile p
-    WS.sendBinaryData f
+    f' <- liftIO ( try $ B.readFile p :: IO (Either SomeException B.ByteString) )
+    case f' of
+        Right f -> WS.sendBinaryData f
+        Left _ -> return ()
     m <- WS.receiveData
     liftIO $ B.writeFile p m
     loop3 p
@@ -112,8 +114,8 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     loop1 s' c
                 "/acid" -> loop2 a' u
                 "/data" -> do
-                    liftIO $ createDirectoryIfMissing False ("data/" `mappend` FB.uid u)
-                    loop3 ("data/"++FB.uid u++"/picture.png")
+                    liftIO $ createDirectoryIfMissing False "data/image"
+                    loop3 ("data/image/"++FB.uid u++".png")
                 _ -> WS.sendTextData (C.pack("Unkown Request "++r))
         Left _ -> do
             url <- FB.url
@@ -143,6 +145,7 @@ main = do
     acid <- JS.open'
     createDirectoryIfMissing False "data"
     forkIO $ WS.runServer "0.0.0.0" 9160 $ login chat acid
-    print "Starting http://localhost:8000"
+    putStrLn "Starting http://localhost:8000"
     simpleHTTP nullConf fileServing
     JS.close' acid
+
