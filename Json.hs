@@ -23,6 +23,18 @@ data KeyValue = KeyValue !(Map.Map Key User) deriving (Typeable)
 $(deriveSafeCopy 0 'base ''User)
 $(deriveSafeCopy 0 'base ''KeyValue)
 
+insertKey :: Key -> User -> Update KeyValue ()
+insertKey k v = do
+    KeyValue m <- get
+    put (KeyValue (Map.insert k v m))
+
+lookupKey :: Key -> Query KeyValue (Maybe User)
+lookupKey k = do
+    KeyValue m <- ask
+    return (Map.lookup k m)
+
+$(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
+
 instance FromJSON User where
     parseJSON (Object v) = User <$> v .: "city"
                                 <*> v .: "country"
@@ -35,18 +47,6 @@ instance ToJSON User where
                                   ,"country" .= b
                                   ,"phone"   .= c
                                   ,"email"   .= d]
-
-insertKey :: Key -> User -> Update KeyValue ()
-insertKey k v = do
-    KeyValue m <- get
-    put (KeyValue (Map.insert k v m))
-
-lookupKey :: Key -> Query KeyValue (Maybe User)
-lookupKey k = do
-    KeyValue m <- ask
-    return (Map.lookup k m)
-
-$(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 
 read' :: AcidState KeyValue -> String -> IO Text
 read' s' k = do
