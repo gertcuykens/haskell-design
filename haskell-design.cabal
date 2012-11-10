@@ -29,5 +29,5 @@ data-files: www/*.png, www/*.htm, www/*.js, www/*.css
 executable haskell-design
     main-is: Main.hs
     other-modules: Login, Json
-    build-depends: base ==4.6.*, http-conduit ==1.6.*, text ==0.11.*, transformers ==0.3.*, fb ==0.13.*, directory ==1.2.*, bytestring ==0.10.*, happstack-server ==7.1.*, websockets ==0.7.*, mtl ==2.1.*, aeson ==0.6.*, acid-state ==0.8.*, safecopy ==0.7.*, containers ==0.5.*
+    build-depends: base >=4.6, http-conduit >=1.6, text >=0.11, transformers >=0.3, fb >=0.13, directory >=1.2, bytestring >=0.10, happstack-server >=7.1, websockets >=0.7, mtl >=2.1, aeson >=0.6, acid-state >=0.8, safecopy >=0.7, containers >=0.5, lens >=3.2
 
