@@ -10,7 +10,7 @@ import Control.Concurrent (forkIO, newMVar, MVar, modifyMVar_, readMVar)
 --import System.Environment
 --import System.IO (IOMode(ReadMode), withFile, hGetLine)
 --import System.Exit
-import System.Directory
+import System.Directory (createDirectoryIfMissing)
 --import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
