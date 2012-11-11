@@ -76,9 +76,9 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
 
 loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
 loop2 a' u' = do
-    a <- liftIO $ JS.read' a' $ FB.uid u'
+    a <- JS.read' a' $ FB.uid u'
     WS.sendTextData a
-    WS.receiveData >>= liftIO . JS.write' a' (FB.uid u')
+    WS.receiveData >>= JS.write' a' (FB.uid u')
     loop2 a' u'
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()

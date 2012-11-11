@@ -6,7 +6,6 @@ import Control.Monad (mzero)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens (Simple, Iso, iso, (?=), at, from, makeIso)
 import qualified Control.Lens as LENS (query)
-import qualified Data.Function.Pointless as P ((.:))
 import Data.Maybe (fromMaybe)
 import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode)
 import Data.Aeson.Encode (fromValue)
@@ -50,18 +49,18 @@ instance ToJSON User where
                                   ,"phone"   .= c
                                   ,"email"   .= d]
 
-read' :: AcidState KeyValue -> String -> IO Text
+read' :: MonadIO m => AcidState KeyValue -> String -> m Text
 read' s' k = do
-    u' <- query s' (LookupKey k)
+    u' <- liftIO $ query s' (LookupKey k)
     case u' of
         Just u ->return $ f u
         Nothing -> return $ f (User "" "" "" "")
         where f = toLazyText . fromValue . toJSON
 
-write' :: AcidState KeyValue -> String -> Text -> IO ()
+write' :: MonadIO m => AcidState KeyValue -> String -> Text -> m ()
 write' s' k v = do
     let u = fromMaybe (error "invalid json") (f v)
-    update s' (InsertKey k u)
+    liftIO $ update s' (InsertKey k u)
     where f = decode . encodeUtf8
 
 open' :: MonadIO m => m (AcidState KeyValue)
