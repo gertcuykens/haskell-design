@@ -3,8 +3,10 @@ module Json (AcidState, KeyValue, read', write', open', close') where
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (mzero)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens (Simple, Iso, iso, (?=), at, from, makeIso)
 import qualified Control.Lens as LENS (query)
+import qualified Data.Function.Pointless as P ((.:))
 import Data.Maybe (fromMaybe)
 import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode)
 import Data.Aeson.Encode (fromValue)
@@ -62,11 +64,11 @@ write' s' k v = do
     update s' (InsertKey k u)
     where f = decode . encodeUtf8
 
-open' :: IO (AcidState KeyValue)
-open' = openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
+open' :: MonadIO m => m (AcidState KeyValue)
+open' = liftIO $ openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
 
-close' :: AcidState KeyValue -> IO ()
-close' = closeAcidState
+close' :: MonadIO m => AcidState KeyValue -> m ()
+close' = liftIO . closeAcidState
 
 {-
 import Control.Monad.State (get, put)

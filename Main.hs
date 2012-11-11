@@ -2,8 +2,9 @@
 module Main where
 
 import Control.Exception (SomeException, try, fromException)
-import Control.Monad (forM_)
-import Control.Monad.IO.Class (liftIO)
+import Control.Lens ((^!), perform, traverse, act, _2)
+--import Control.Monad (forM_)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Concurrent (forkIO, newMVar, MVar, modifyMVar_, readMVar)
 --import Control.Applicative
 --import System.Environment
@@ -12,13 +13,14 @@ import Control.Concurrent (forkIO, newMVar, MVar, modifyMVar_, readMVar)
 import System.Directory
 --import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
-import Happstack.Server (ServerPart, Response, Browsing(EnableBrowsing), simpleHTTP, nullConf, serveDirectory)
+import Data.Function.Pointless ((.:))
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 --import qualified Data.Text.Lazy.Internal as L (Text)
 --import qualified Data.Text.Lazy.IO as L
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as B
+import Happstack.Server (ServerPart, Response, Browsing(EnableBrowsing), simpleHTTP, nullConf, serveDirectory)
 import qualified Network.WebSockets as WS
 import qualified Json as JS
 import qualified Login as FB
@@ -45,10 +47,11 @@ addClient c l = c : l
 removeClient :: Client -> [Client] -> [Client]
 removeClient c = filter ((/= fst c) . fst)
 
-broadcast :: T.Text -> [Client] -> IO ()
-broadcast m l = do
-    T.putStrLn m
-    forM_ l $ \(_, k) -> WS.sendSink k $ WS.textData m
+broadcast :: MonadIO m => T.Text -> [Client] -> m ()
+broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
+--broadcast t = (liftIO .) . perform $ traverse._2.act (`WS.sendSink` WS.textData t)
+--broadcast t l = liftIO $ T.putStrLn t >> l ^! traverse . _2 . act (`WS.sendSink` WS.textData t)
+--broadcast t l = liftIO (T.putStrLn t) >> liftIO (forM_ l $ \(_, k) -> WS.sendSink k $ WS.textData t)
 
 loop1 :: MVar Clients -> Client -> WS.WebSockets WS.Hybi10 ()
 loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
@@ -56,7 +59,9 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
     s <- liftIO $ readMVar s'
     let i = inc (counter s)
     let l = clients s
-    liftIO $ broadcast ( T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m) l
+    let t = T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m
+    liftIO (T.putStrLn t)
+    broadcast t l
     liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
     loop1 s' c
     where
@@ -109,7 +114,9 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                         WS.sendSink k $ WS.textData $ "Facebook Users " `mappend` T.intercalate ", " (map (FB.name . fst) (clients s))
                         let i = counter s
                         let l = addClient c (clients s)
-                        broadcast (FB.name(fst c) `mappend` " joined") l
+                        let t = FB.name(fst c) `mappend` " joined"
+                        liftIO (T.putStrLn t)
+                        broadcast t l
                         return (i,l)
                     loop1 s' c
                 "/acid" -> loop2 a' u
@@ -117,16 +124,14 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     liftIO $ createDirectoryIfMissing False "data/image"
                     loop3 ("data/image/"++FB.uid u++".png")
                 _ -> WS.sendTextData (C.pack("Unkown Request "++r))
-        Left _ -> do
-            url <- FB.url
-            WS.sendTextData ("Facebook Login " `mappend` url)
-            --WS.sendTextData (C.pack("Facebook Login " ++ T.unpack url))
-            --liftIO $ print $ "error: " ++ show (e :: SomeException)
-     where
-       catchDisconnect e =
-         case fromException e of
-           Just WS.ConnectionClosed -> liftIO $ putStrLn "Connection Closed"
-           _ -> return ()
+        Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
+                  --WS.sendTextData (C.pack("Facebook Login " ++ T.unpack url))
+                  --liftIO $ print $ "error: " ++ show (e :: SomeException)
+    where
+        catchDisconnect e =
+            case fromException e of
+                Just WS.ConnectionClosed -> liftIO $ putStrLn "Connection Closed"
+                _ -> return ()
 
 {-
 conf :: Conf
