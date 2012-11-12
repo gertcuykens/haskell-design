@@ -2,11 +2,10 @@
 module Main where
 
 import Control.Exception (SomeException, try, fromException)
-import Control.Lens ((^!), perform, traverse, act, _2)
+import Control.Lens (perform, traverse, act, _2)
 --import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Concurrent (forkIO, newMVar, MVar, modifyMVar_, readMVar)
---import Control.Applicative
+import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 --import System.Environment
 --import System.IO (IOMode(ReadMode), withFile, hGetLine)
 --import System.Exit
@@ -14,13 +13,13 @@ import System.Directory (createDirectoryIfMissing)
 --import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
+--import Data.Conduit.Binary
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
---import qualified Data.Text.Lazy.Internal as L (Text)
---import qualified Data.Text.Lazy.IO as L
-import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy.Char8 as B
-import Happstack.Server (ServerPart, Response, Browsing(EnableBrowsing), simpleHTTP, nullConf, serveDirectory)
+import qualified Data.ByteString.Char8 as B
+import Network.Wai.Application.Static (staticApp, defaultWebAppSettings)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsPort)
+import Network.Wai.Handler.WebSockets (intercept)
 import qualified Network.WebSockets as WS
 import qualified Json as JS
 import qualified Login as FB
@@ -76,8 +75,7 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
 
 loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
 loop2 a' u' = do
-    a <- JS.read' a' $ FB.uid u'
-    WS.sendTextData a
+    JS.read' a' (FB.uid u') >>= WS.sendTextData
     WS.receiveData >>= JS.write' a' (FB.uid u')
     loop2 a' u'
 
@@ -97,11 +95,11 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
     k <- WS.getSink
     m <- WS.receiveData
-    liftIO $ C.putStrLn m
-    let r = C.unpack(WS.requestPath r')
-    let prefix = C.pack "Facebook Code "
-    let code = C.drop (C.length prefix) m
-    u' <- liftIO (try $ FB.usr  (C.pack "code", code) :: IO (Either SomeException FB.User))
+    liftIO $ B.putStrLn m
+    let r = B.unpack(WS.requestPath r')
+    let prefix = B.pack "Facebook Code "
+    let code = B.drop (B.length prefix) m
+    u' <- liftIO (try $ FB.usr  (B.pack "code", code) :: IO (Either SomeException FB.User))
     case u' of
         Right u -> do
             let c = (u, k)
@@ -123,7 +121,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                 "/data" -> do
                     liftIO $ createDirectoryIfMissing False "data/image"
                     loop3 ("data/image/"++FB.uid u++".png")
-                _ -> WS.sendTextData (C.pack("Unkown Request "++r))
+                _ -> WS.sendTextData (B.pack("Unkown Request "++r))
         Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
                   --WS.sendTextData (C.pack("Facebook Login " ++ T.unpack url))
                   --liftIO $ print $ "error: " ++ show (e :: SomeException)
@@ -133,24 +131,33 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                 Just WS.ConnectionClosed -> liftIO $ putStrLn "Connection Closed"
                 _ -> return ()
 
-{-
-conf :: Conf
-conf = Conf { port = 8000
-            , validator = Nothing
-            , logAccess = Just logMAccess
-            , timeout = 30}
--}
-
-fileServing :: ServerPart Response
-fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
-
 main :: IO ()
 main = do
+    putStrLn "http://localhost:9160"
+    createDirectoryIfMissing False "data"
     chat <- newMVar (0,[])
     acid <- JS.open'
-    createDirectoryIfMissing False "data"
-    forkIO $ WS.runServer "0.0.0.0" 9160 $ login chat acid
-    putStrLn "Starting http://localhost:8000"
-    simpleHTTP nullConf fileServing
+    let s = defaultSettings { settingsPort = 9160, settingsIntercept = intercept (login chat acid) }
+    runSettings s $ staticApp $ defaultWebAppSettings "www"
     JS.close' acid
+
+{-
+ -
+ - import Control.Concurrent (forkIO)
+ -
+ - WS.runServer "0.0.0.0" 9160 $ login chat acid
+ -
+ - import Happstack.Server (ServerPart, Response, Browsing(EnableBrowsing), simpleHTTP, nullConf, serveDirectory)
+ -
+ - fileServing :: ServerPart Response
+ - fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
+ -
+ - conf :: Conf
+ - conf = Conf { port = 8000
+ -             , validator = Nothing
+ -             , logAccess = Just logMAccess
+ -             , timeout = 30}
+ -
+ - simpleHTTP nullConf fileServing
+ -}
 
