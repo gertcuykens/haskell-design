@@ -134,7 +134,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
 
 main :: IO ()
 main = do
-    putStrLn "http://localhost:9160"
+    putStrLn "http://localhost:9160/chat.htm"
     createDirectoryIfMissing False "data"
     chat <- newMVar (0,[])
     acid <- JS.open'
