@@ -13,7 +13,8 @@ import System.Directory (createDirectoryIfMissing)
 --import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
---import Data.Conduit.Binary
+import Data.Conduit (runResourceT, ($$))
+import Data.Conduit.Binary (sourceFile, sinkFile)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.ByteString.Char8 as B
