@@ -22,8 +22,14 @@ import Network.Wai.Application.Static (staticApp, defaultWebAppSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsPort)
 import Network.Wai.Handler.WebSockets (intercept)
 import qualified Network.WebSockets as WS
+--import qualified Network.WebSockets.Monad as WS
 import qualified Json as JS
 import qualified Login as FB
+
+--deriving instance Eq (WS.Sink WS.Hybi10)
+
+--instance Eq (WS.Sink WS.Hybi10) where
+--    WS.Sink a == WS.Sink b = a == b
 
 type Counter = Int
 type Client = (FB.User, WS.Sink WS.Hybi10)
@@ -39,13 +45,13 @@ clients :: Clients -> [Client]
 clients (_,b) = b
 
 clientExists :: Client -> [Client] -> Bool
-clientExists c = any ((== fst c) . fst)
+clientExists c = any ((== snd c) . snd)
 
 addClient :: Client -> [Client] -> [Client]
 addClient c l = c : l
 
 removeClient :: Client -> [Client] -> [Client]
-removeClient c = filter ((/= fst c) . fst)
+removeClient c = filter ((/= snd c) . snd)
 
 broadcast :: MonadIO m => T.Text -> [Client] -> m ()
 broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
@@ -109,7 +115,6 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                 "/chat" -> do
                     WS.sendTextData ("Facebook Name " `mappend` FB.name u)
                     liftIO $ modifyMVar_ s' $ \s -> do
-                        -- if clientExists c (clients s) then WS.sendTextData ("User already exists" :: Text) else do
                         WS.sendSink k $ WS.textData $ "Facebook Users " `mappend` T.intercalate ", " (map (FB.name . fst) (clients s))
                         let i = counter s
                         let l = addClient c (clients s)
