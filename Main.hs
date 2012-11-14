@@ -13,21 +13,30 @@ import System.Directory (createDirectoryIfMissing)
 --import Data.Char (isPunctuation, isSpace)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
-import Data.Conduit (runResourceT, ($$))
-import Data.Conduit.Binary (sourceFile, sinkFile)
+import Data.Conduit (Pipe, runResourceT, ($$))
+import Data.Conduit.Binary (sourceHandle, sinkHandle)
+import Data.Void (Void)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString as B
+
+import qualified Data.ByteString.Char8 as C
+
+--import qualified Data.ByteString as B
+--import qualified Data.ByteString.Lazy as BL
+--import qualified Data.Text as T
+--import qualified Data.Text.Lazy as TL
+--import qualified Data.Text.Lazy.Encoding as TL
+
 import Network.Wai.Application.Static (staticApp, defaultWebAppSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsPort)
 import Network.Wai.Handler.WebSockets (intercept)
 import qualified Network.WebSockets as WS
---import qualified Network.WebSockets.Monad as WS
 import qualified Json as JS
 import qualified Login as FB
 
+--import qualified Network.WebSockets.Monad as WS
 --deriving instance Eq (WS.Sink WS.Hybi10)
-
 --instance Eq (WS.Sink WS.Hybi10) where
 --    WS.Sink a == WS.Sink b = a == b
 
@@ -59,6 +68,38 @@ broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO $ T.putStrLn t >> l ^! traverse . _2 . act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO (T.putStrLn t) >> liftIO (forM_ l $ \(_, k) -> WS.sendSink k $ WS.textData t)
 
+--WS.receiveData
+--WS.sendBinaryData
+--WS.sendTextData
+--WS.sendSink
+--WS.textData
+--WS.binaryData
+--runResourceT
+--Protocol p
+
+{-
+l is the type of values that may be left over from this Pipe. A Pipe with no leftovers would use
+Void here, and one with leftovers would use the same type as the i parameter.
+Leftovers are automatically provided to the next Pipe in the monadic chain.
+i is the type of values for this Pipe's input stream.
+o is the type of values for this Pipe's output stream.
+u is the result type from the upstream Pipe.
+m is the underlying monad.
+r is the result type.
+-}
+
+--GHC.IO.Handle.Types.Handle
+
+--inp :: MonadIO m => WS.WebSockets p a -> Pipe B.ByteString B.ByteString B.ByteString B.ByteString m B.ByteString
+--inp = sourceHandle WS.receiveData
+--WS.receiveData
+--WS.WebSockets p a
+
+--out :: MonadIO m => WS.Sink p -> Pipe B.ByteString B.ByteString B.ByteString B.ByteString m B.ByteString
+--out k = sinkHandle WS.sendSink k $ WS.binaryData $ "test"
+--WS.sendSink k $ WS.textData $ "test"
+--newtype Sink p = Sink { unSink :: MVar (E.Iteratee (Message p) IO ())
+
 loop1 :: MVar Clients -> Client -> WS.WebSockets WS.Hybi10 ()
 loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
     m <- WS.receiveData
@@ -82,8 +123,8 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
 
 loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
 loop2 a' u' = do
-    JS.read' a' (FB.uid u') >>= WS.sendTextData
-    WS.receiveData >>= JS.write' a' (FB.uid u')
+    JS.read' a' (T.unpack(FB.uid u')) >>= WS.sendTextData
+    WS.receiveData >>= JS.write' a' (T.unpack(FB.uid u'))
     loop2 a' u'
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
@@ -103,15 +144,12 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     k <- WS.getSink
     m <- WS.receiveData
     liftIO $ B.putStrLn m
-    let r = B.unpack(WS.requestPath r')
-    let prefix = B.pack "Facebook Code "
-    let code = B.drop (B.length prefix) m
-    u' <- liftIO (try $ FB.usr  (B.pack "code", code) :: IO (Either SomeException FB.User))
+    u' <- liftIO (try $ FB.object (codePrefix, (f m)) :: IO (Either SomeException FB.User))
     case u' of
         Right u -> do
             let c = (u, k)
-            WS.sendTextData ("Facebook Uid " `mappend` T.pack(FB.uid u))
-            case r of
+            WS.sendTextData ("Facebook Uid " `mappend` (FB.uid u))
+            case request of
                 "/chat" -> do
                     WS.sendTextData ("Facebook Name " `mappend` FB.name u)
                     liftIO $ modifyMVar_ s' $ \s -> do
@@ -119,23 +157,26 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                         let i = counter s
                         let l = addClient c (clients s)
                         let t = FB.name(fst c) `mappend` " joined"
-                        liftIO (T.putStrLn t)
+                        T.putStrLn t
                         broadcast t l
                         return (i,l)
                     loop1 s' c
                 "/acid" -> loop2 a' u
                 "/data" -> do
                     liftIO $ createDirectoryIfMissing False "data/image"
-                    loop3 ("data/image/"++FB.uid u++".png")
-                _ -> WS.sendTextData (B.pack("Unkown Request "++r))
+                    loop3 ("data/image/"++T.unpack(FB.uid u)++".png")
+                _ -> WS.sendTextData (error)
         Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
-                  --WS.sendTextData (C.pack("Facebook Login " ++ T.unpack url))
-                  --liftIO $ print $ "error: " ++ show (e :: SomeException)
     where
         catchDisconnect e =
             case fromException e of
                 Just WS.ConnectionClosed -> liftIO $ putStrLn "Connection Closed"
                 _ -> return ()
+        prefix = C.pack "Facebook Code "
+        f=C.drop (C.length prefix)
+        codePrefix= C.pack "code"
+        request = C.unpack(WS.requestPath r')
+        error= C.pack("Unkown Request "++request)
 
 main :: IO ()
 main = do
@@ -148,7 +189,6 @@ main = do
     JS.close' acid
 
 {-
- -
  - import Control.Concurrent (forkIO)
  -
  - WS.runServer "0.0.0.0" 9160 $ login chat acid
