@@ -101,12 +101,12 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
     WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
     WS.receiveData >>= \m -> do
-        u' <- liftIO (try $ FB.object (codePrefix, (f m)) :: IO (Either SomeException FB.User))
+        u' <- liftIO (try $ FB.object (codePrefix, f m) (FB.Id "me") :: IO (Either SomeException FB.User))
         case u' of
             Right u -> do
                 k <- WS.getSink
                 let c = (u, k)
-                WS.sendTextData ("Facebook Uid " `mappend` (FB.uid u))
+                WS.sendTextData ("Facebook Uid " `mappend` FB.uid u)
                 case request of
                     "/chat" -> do
                         WS.sendTextData ("Facebook Name " `mappend` FB.name u)
@@ -120,10 +120,8 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                             return (i,l)
                         loop1 s' c
                     "/acid" -> loop2 a' u
-                    "/data" -> do
-                        liftIO $ createDirectoryIfMissing False "data/image"
-                        loop3 ("data/image/"++T.unpack(FB.uid u)++".png")
-                    _ -> WS.sendTextData (err)
+                    "/data" -> loop3 ("data/image/"++T.unpack(FB.uid u)++".png")
+                    _ -> WS.sendTextData err
             Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
         where
             catchDisconnect e =
@@ -140,6 +138,7 @@ main :: IO ()
 main = do
     putStrLn "http://localhost:9160/chat.htm"
     createDirectoryIfMissing False "data"
+    createDirectoryIfMissing False "data/image"
     chat <- newMVar (0,[])
     acid <- JS.open'
     let s = defaultSettings { settingsPort = 9160, settingsIntercept = intercept (login chat acid) }
