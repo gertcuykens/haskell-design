@@ -35,9 +35,6 @@ type Counter = Int
 type Client = (FB.User, WS.Sink WS.Hybi10)
 type Clients = (Counter,[Client])
 
-inc :: Counter -> Counter
-inc i = i + 1
-
 counter :: Clients -> Counter
 counter (a,_) = a
 
@@ -63,7 +60,7 @@ loop1 :: MVar Clients -> Client -> WS.WebSockets WS.Hybi10 ()
 loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
     m <- WS.receiveData
     s <- liftIO $ readMVar s'
-    let i = inc (counter s)
+    let i = counter s + 1
     let l = clients s
     let t = T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m
     liftIO (T.putStrLn t)
@@ -82,8 +79,8 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
 
 loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
 loop2 a' u' = do
-    JS.read' a' (T.unpack(FB.uid u')) >>= WS.sendTextData
-    WS.receiveData >>= JS.write' a' (T.unpack(FB.uid u'))
+    JS.read' a' (FB.uid u') >>= WS.sendTextData
+    WS.receiveData >>= JS.write' a' (FB.uid u')
     loop2 a' u'
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
@@ -92,8 +89,7 @@ loop3 p = do
     case f' of
         Right f -> WS.sendBinaryData f
         Left _ -> return ()
-    m <- WS.receiveData
-    liftIO $ B.writeFile p m
+    WS.receiveData >>= liftIO . B.writeFile p
     loop3 p
 
 login :: MVar Clients -> JS.AcidState JS.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()

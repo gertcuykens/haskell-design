@@ -9,13 +9,14 @@ import qualified Control.Lens as LENS (query)
 import Data.Maybe (fromMaybe)
 import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode)
 import Data.Aeson.Encode (fromValue)
-import Data.Text.Lazy.Builder (toLazyText)
-import Data.Text.Lazy.Internal (Text)
-import Data.Text.Lazy.Encoding (encodeUtf8)
+import Data.Text (Text, unpack)
+import qualified Data.Text.Lazy.Builder as L (toLazyText)
+import qualified Data.Text.Lazy.Internal as L (Text)
+import qualified Data.Text.Lazy.Encoding as L (encodeUtf8)
 import Data.Acid (AcidState, Update, Query, query, update, openLocalStateFrom, closeAcidState, makeAcidic)
 import Data.SafeCopy (deriveSafeCopy, base)
 import Data.Typeable (Typeable)
-import qualified Data.Map as Map (Map, lookup, insert, empty)
+import qualified Data.Map as Map (Map, empty)
 
 type Key = String
 data User = User Text Text Text Text deriving Typeable
@@ -23,16 +24,16 @@ newtype KeyValue = KeyValue { getKeyValue :: Map.Map Key User }
 
 $(deriveSafeCopy 0 'base ''User)
 $(deriveSafeCopy 0 'base ''KeyValue)
-
 -- $(makeIso ''KeyValue)
+
 keyValue :: Simple Iso (Map.Map Key User) KeyValue
 keyValue = iso KeyValue getKeyValue
 
 insertKey :: Key -> User -> Update KeyValue ()
-insertKey k v = from keyValue . at k ?= v
+insertKey k v = from keyValue.at k?=v
 
 lookupKey :: Key -> Query KeyValue (Maybe User)
-lookupKey k = LENS.query (from keyValue . at k)
+lookupKey k = LENS.query (from keyValue.at k)
 
 $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 
@@ -49,19 +50,21 @@ instance ToJSON User where
                                   ,"phone"   .= c
                                   ,"email"   .= d]
 
-read' :: MonadIO m => AcidState KeyValue -> String -> m Text
-read' s' k = do
+read' :: MonadIO m => AcidState KeyValue -> Text -> m L.Text
+read' s' k' = do
+    let k = unpack k'
     u' <- liftIO $ query s' (LookupKey k)
     case u' of
         Just u ->return $ f u
         Nothing -> return $ f (User "" "" "" "")
-        where f = toLazyText . fromValue . toJSON
+        where f = L.toLazyText . fromValue . toJSON
 
-write' :: MonadIO m => AcidState KeyValue -> String -> Text -> m ()
-write' s' k v = do
+write' :: MonadIO m => AcidState KeyValue -> Text -> L.Text -> m ()
+write' s' k' v = do
+    let k = unpack k'
     let u = fromMaybe (error "invalid json") (f v)
     liftIO $ update s' (InsertKey k u)
-    where f = decode . encodeUtf8
+    where f = decode . L.encodeUtf8
 
 open' :: MonadIO m => m (AcidState KeyValue)
 open' = liftIO $ openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
