@@ -63,7 +63,7 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
     let i = counter s + 1
     let l = clients s
     let t = T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m
-    liftIO (T.putStrLn t)
+    liftIO $ T.putStrLn t
     broadcast t l
     liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
     loop1 s' c
@@ -73,7 +73,9 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
                 Just WS.ConnectionClosed -> liftIO $ modifyMVar_ s' $ \s -> do
                     let i = counter s
                     let l = removeClient c (clients s)
-                    broadcast (FB.name u `mappend` " disconnected") l
+                    let t = FB.name u `mappend` " disconnected"
+                    liftIO $ T.putStrLn t
+                    broadcast t l
                     return (i,l)
                 _ -> return ()
 
@@ -95,7 +97,7 @@ loop3 p = do
 login :: MVar Clients -> JS.AcidState JS.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
-    WS.getVersion >>= liftIO . putStrLn . ("Client Version: " ++)
+    WS.getVersion >>= liftIO . putStrLn . ("Connection Open: " ++)
     WS.receiveData >>= \m -> do
         u' <- liftIO (try $ FB.object (codePrefix, f m) (FB.Id "me") :: IO (Either SomeException FB.User))
         case u' of

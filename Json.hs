@@ -13,7 +13,9 @@ import Data.Text (Text, unpack)
 import qualified Data.Text.Lazy.Builder as L (toLazyText)
 import qualified Data.Text.Lazy.Internal as L (Text)
 import qualified Data.Text.Lazy.Encoding as L (encodeUtf8)
-import Data.Acid (AcidState, Update, Query, query, update, openLocalStateFrom, closeAcidState, makeAcidic)
+import Data.Acid (AcidState, Update, Query, openLocalStateFrom, makeAcidic)
+import Data.Acid.Advanced (query', update')
+import Data.Acid.Local (createCheckpointAndClose, createArchive)
 import Data.SafeCopy (deriveSafeCopy, base)
 import Data.Typeable (Typeable)
 import qualified Data.Map as Map (Map, empty)
@@ -53,7 +55,7 @@ instance ToJSON User where
 read' :: MonadIO m => AcidState KeyValue -> Text -> m L.Text
 read' s' k' = do
     let k = unpack k'
-    u' <- liftIO $ query s' (LookupKey k)
+    u' <- query' s' (LookupKey k)
     case u' of
         Just u ->return $ f u
         Nothing -> return $ f (User "" "" "" "")
@@ -63,14 +65,16 @@ write' :: MonadIO m => AcidState KeyValue -> Text -> L.Text -> m ()
 write' s' k' v = do
     let k = unpack k'
     let u = fromMaybe (error "invalid json") (f v)
-    liftIO $ update s' (InsertKey k u)
+    update' s' (InsertKey k u)
     where f = decode . L.encodeUtf8
 
 open' :: MonadIO m => m (AcidState KeyValue)
 open' = liftIO $ openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
 
 close' :: MonadIO m => AcidState KeyValue -> m ()
-close' = liftIO . closeAcidState
+close' s' = do
+    liftIO $ createCheckpointAndClose s'
+    liftIO $ createArchive s'
 
 {-
 import Control.Monad.State (get, put)
