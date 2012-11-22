@@ -8,7 +8,7 @@ import qualified Facebook as FB
 import Network.HTTP.Conduit (withManager)
 
 app :: FB.Credentials
-app = FB.Credentials "localhost" "249348058430770" ".."
+app = FB.Credentials "localhost" "249348058430770" "..."
 
 rrl :: FB.RedirectUrl
 rrl = "http://localhost:9160/state.htm"

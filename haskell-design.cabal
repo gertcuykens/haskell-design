@@ -27,6 +27,7 @@ cabal-version: >=1.8
 data-files: www/*.png, www/*.htm, www/*.js, www/*.css
 
 executable haskell-design
+    hs-source-dirs: src
     main-is: Main.hs
     other-modules: Login, Json
     ghc-options: -Wall
