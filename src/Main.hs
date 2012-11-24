@@ -26,6 +26,7 @@ import qualified Network.WebSockets as WS
 import qualified Json as JS
 import qualified Login as FB
 
+newtype Sinkwrap = Sinkwrap {getSinkwrap::WS.Sink WS.Hybi10} deriving Eq
 --import qualified Network.WebSockets.Monad as WS
 --deriving instance Eq (WS.Sink WS.Hybi10)
 --instance Eq (WS.Sink WS.Hybi10) where
@@ -33,7 +34,7 @@ import qualified Login as FB
 
 type Counter = Int
 type Client = (FB.User, WS.Sink WS.Hybi10)
-type Clients = (Counter,[Client])
+type Clients = (Counter, [Client])
 
 counter :: Clients -> Counter
 counter (a,_) = a
@@ -48,7 +49,8 @@ addClient :: Client -> [Client] -> [Client]
 addClient c l = c : l
 
 removeClient :: Client -> [Client] -> [Client]
-removeClient c = filter ((/= snd c) . snd)
+removeClient c = filter ((/= Sinkwrap(snd c)) . Sinkwrap . snd)
+--removeClient c = filter ((/= snd c) . snd)
 
 broadcast :: MonadIO m => T.Text -> [Client] -> m ()
 broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
@@ -143,7 +145,7 @@ main = do
     runSettings s $ staticApp $ defaultWebAppSettings "www"
     JS.close' acid
 
-{-
+{------------------------------------------
  - import Control.Concurrent (forkIO)
  -
  - WS.runServer "0.0.0.0" 9160 $ login chat acid
@@ -160,5 +162,5 @@ main = do
  -             , timeout = 30}
  -
  - simpleHTTP nullConf fileServing
- -}
+ ------------------------------------------}
 
