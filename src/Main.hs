@@ -3,7 +3,7 @@ module Main where
 
 import Control.Exception (SomeException, try, fromException)
 import Control.Lens (perform, traverse, act, _2)
---import Control.Monad (forM_)
+import Control.Monad (forever)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import System.Directory (createDirectoryIfMissing)
@@ -59,16 +59,16 @@ broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO (T.putStrLn t) >> liftIO (forM_ l $ \(_, k) -> WS.sendSink k $ WS.textData t)
 
 loop1 :: MVar Clients -> Client -> WS.WebSockets WS.Hybi10 ()
-loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
-    m <- WS.receiveData
-    s <- liftIO $ readMVar s'
-    let i = counter s + 1
-    let l = clients s
-    let t = T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m
-    liftIO $ T.putStrLn t
-    broadcast t l
-    liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
-    loop1 s' c
+loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
+    forever $ do
+        m <- WS.receiveData
+        s <- liftIO $ readMVar s'
+        let i = counter s + 1
+        let l = clients s
+        let t = T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m
+        liftIO $ T.putStrLn t
+        broadcast t l
+        liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
     where
         catchDisconnect e =
             case fromException e of
@@ -82,19 +82,17 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $ do
                 _ -> return ()
 
 loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
-loop2 a' u' = do
+loop2 a' u' = forever $ do
     JS.read' a' (FB.uid u') >>= WS.sendTextData
     WS.receiveData >>= JS.write' a' (FB.uid u')
-    loop2 a' u'
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
-loop3 p = do
+loop3 p = forever $ do
     f' <- liftIO ( try $ B.readFile p :: IO (Either SomeException B.ByteString) )
     case f' of
         Right f -> WS.sendBinaryData f
         Left _ -> return ()
     WS.receiveData >>= liftIO . B.writeFile p
-    loop3 p
 
 login :: MVar Clients -> JS.AcidState JS.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
