@@ -22,11 +22,12 @@ import qualified Data.ByteString.Char8 as C
 import Network.Wai.Application.Static (staticApp, defaultWebAppSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsPort)
 import Network.Wai.Handler.WebSockets (intercept)
+--import Network.Wai.Handler.WarpTLS (TLSSettings, runTLS)
 import qualified Network.WebSockets as WS
 import qualified Json as JS
 import qualified Login as FB
 
-newtype Sinkwrap = Sinkwrap {getSinkwrap::WS.Sink WS.Hybi10} deriving Eq
+--newtype Sinkwrap = Sinkwrap {getSinkwrap::WS.Sink WS.Hybi10} deriving Eq
 --import qualified Network.WebSockets.Monad as WS
 --deriving instance Eq (WS.Sink WS.Hybi10)
 --instance Eq (WS.Sink WS.Hybi10) where
@@ -49,7 +50,7 @@ addClient :: Client -> [Client] -> [Client]
 addClient c l = c : l
 
 removeClient :: Client -> [Client] -> [Client]
-removeClient c = filter ((/= Sinkwrap(snd c)) . Sinkwrap . snd)
+removeClient c = filter ((/= snd c) . snd)
 --removeClient c = filter ((/= snd c) . snd)
 
 broadcast :: MonadIO m => T.Text -> [Client] -> m ()

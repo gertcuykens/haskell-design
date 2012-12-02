@@ -4,8 +4,7 @@ module Json (AcidState, KeyValue, read', write', open', close') where
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (mzero)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Lens (Simple, Iso, iso, (?=), at, from, makeIso)
-import qualified Control.Lens as LENS (query)
+import Control.Lens ((?=), at, from, makeIso, peruse)
 import Data.Maybe (fromMaybe)
 import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode)
 import Data.Aeson.Encode (fromValue)
@@ -22,20 +21,17 @@ import qualified Data.Map as Map (Map, empty)
 
 type Key = String
 data User = User Text Text Text Text deriving Typeable
-newtype KeyValue = KeyValue { getKeyValue :: Map.Map Key User }
+newtype KeyValue = KeyValue (Map.Map Key User)
 
 $(deriveSafeCopy 0 'base ''User)
 $(deriveSafeCopy 0 'base ''KeyValue)
--- $(makeIso ''KeyValue)
-
-keyValue :: Simple Iso (Map.Map Key User) KeyValue
-keyValue = iso KeyValue getKeyValue
+$(makeIso ''KeyValue)
 
 insertKey :: Key -> User -> Update KeyValue ()
 insertKey k v = from keyValue.at k?=v
 
 lookupKey :: Key -> Query KeyValue (Maybe User)
-lookupKey k = LENS.query (from keyValue.at k)
+lookupKey k = peruse (from keyValue.at k)
 
 $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 
@@ -90,3 +86,9 @@ lookupKey k = do
     KeyValue m <- ask
     return (Map.lookup k m)
 -}
+
+{-
+keyValue :: Simple Iso (Map.Map Key User) KeyValue
+keyValue = iso KeyValue getKeyValue
+-}
+
