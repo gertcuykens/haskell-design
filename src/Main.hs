@@ -121,7 +121,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     "/acid" -> loop2 a' u
                     "/data" -> loop3 ("data/image/"++T.unpack(FB.uid u)++".png")
                     _ -> WS.sendTextData err
-            Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
+            Left _ -> WS.sendTextData ("Facebook Login " `mappend` FB.url)
         where
             catchDisconnect e =
                 case fromException e of
@@ -162,4 +162,4 @@ main = do
  -
  - simpleHTTP nullConf fileServing
  ------------------------------------------}
-
+--Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
