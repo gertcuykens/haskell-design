@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 module Main where
 
 import Control.Exception (SomeException, try, fromException)
@@ -8,24 +8,25 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import System.Directory (createDirectoryIfMissing)
 --import Data.Char (isPunctuation, isSpace)
+import Data.Aeson.TH (deriveJSON)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
---import qualified Data.ByteString as B
---import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy as BL
 --import qualified Data.Text as T
 --import qualified Data.Text.Lazy as TL
 --import qualified Data.Text.Lazy.Encoding as TL
+import Network.HTTP.Conduit (Response(..))
 import Network.Wai.Application.Static (staticApp, defaultWebAppSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsPort)
 import Network.Wai.Handler.WebSockets (intercept)
 --import Network.Wai.Handler.WarpTLS (TLSSettings, runTLS)
 import qualified Network.WebSockets as WS
-import qualified Json as JS
-import qualified Login as FB
+import qualified Database as DB
+import Login
 
 --newtype Sinkwrap = Sinkwrap {getSinkwrap::WS.Sink WS.Hybi10} deriving Eq
 --import qualified Network.WebSockets.Monad as WS
@@ -33,8 +34,11 @@ import qualified Login as FB
 --instance Eq (WS.Sink WS.Hybi10) where
 --    WS.Sink a == WS.Sink b = a == b
 
+data User = User T.Text T.Text T.Text T.Text T.Text T.Text T.Text T.Text T.Text
+$(deriveJSON id ''User)
+
 type Counter = Int
-type Client = (FB.User, WS.Sink WS.Hybi10)
+type Client = (User, WS.Sink WS.Hybi10)
 type Clients = (Counter, [Client])
 
 counter :: Clients -> Counter
@@ -59,6 +63,7 @@ broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO $ T.putStrLn t >> l ^! traverse . _2 . act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO (T.putStrLn t) >> liftIO (forM_ l $ \(_, k) -> WS.sendSink k $ WS.textData t)
 
+{-
 loop1 :: MVar Clients -> Client -> WS.WebSockets WS.Hybi10 ()
 loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
     forever $ do
@@ -66,7 +71,7 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
         s <- liftIO $ readMVar s'
         let i = counter s + 1
         let l = clients s
-        let t = T.pack(show i) `mappend` " " `mappend` FB.name u `mappend` ": " `mappend` m
+        let t = T.pack(show i) `mappend` " " `mappend` OA.name u `mappend` ": " `mappend` m
         liftIO $ T.putStrLn t
         broadcast t l
         liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
@@ -76,16 +81,16 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
                 Just WS.ConnectionClosed -> liftIO $ modifyMVar_ s' $ \s -> do
                     let i = counter s
                     let l = removeClient c (clients s)
-                    let t = FB.name u `mappend` " disconnected"
+                    let t = OA.name u `mappend` " disconnected"
                     liftIO $ T.putStrLn t
                     broadcast t l
                     return (i,l)
                 _ -> return ()
 
-loop2 ::  JS.AcidState JS.KeyValue -> FB.User -> WS.WebSockets WS.Hybi10 ()
+loop2 ::  DB.AcidState DB.KeyValue -> OA.User -> WS.WebSockets WS.Hybi10 ()
 loop2 a' u' = forever $ do
-    JS.read' a' (FB.uid u') >>= WS.sendTextData
-    WS.receiveData >>= JS.write' a' (FB.uid u')
+    DB.read' a' (OA.uid u') >>= WS.sendTextData
+    WS.receiveData >>= DB.write' a' (OA.uid u')
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
 loop3 p = forever $ do
@@ -94,34 +99,50 @@ loop3 p = forever $ do
         Right f -> WS.sendBinaryData f
         Left _ -> return ()
     WS.receiveData >>= liftIO . B.writeFile p
+-}
 
-login :: MVar Clients -> JS.AcidState JS.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
+login :: MVar Clients -> DB.AcidState DB.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
-    WS.getVersion >>= liftIO . putStrLn . ("Connection Open: " ++)
+    --WS.getVersion >>= liftIO . print . ("Connection Open: " ++)
     WS.receiveData >>= \m -> do
-        u' <- liftIO (try $ FB.object (codePrefix, f m) (FB.Id "me") :: IO (Either SomeException FB.User))
+        --liftIO $ print (C.unpack m)
+        case request of
+            "/code" -> do
+                (Just (AccessToken accessToken Nothing)) <- liftIO $ authToken m
+                WS.sendTextData (accessToken)
+                --liftIO $ print accessToken
+            "/acid" -> do
+                (Response a b c d) <- liftIO $ userinfo m
+                WS.sendTextData (d)
+                --encode d
+                --u = d.id
+                --liftIO (userinfo accessToken >>= print)
+            _ -> WS.sendTextData err
+        {-
+        --u' <- liftIO (try $ OA.object (codePrefix, f m) (OA.Id "me") :: IO (Either SomeException OA.User))
         case u' of
             Right u -> do
                 k <- WS.getSink
                 let c = (u, k)
-                WS.sendTextData ("Facebook Uid " `mappend` FB.uid u)
+                WS.sendTextData ("Facebook Uid " `mappend` OA.uid u)
                 case request of
                     "/chat" -> do
-                        WS.sendTextData ("Facebook Name " `mappend` FB.name u)
+                        WS.sendTextData ("Facebook Name " `mappend` OA.name u)
                         liftIO $ modifyMVar_ s' $ \s -> do
-                            WS.sendSink k $ WS.textData $ "Facebook Users " `mappend` T.intercalate ", " (map (FB.name . fst) (clients s))
+                            WS.sendSink k $ WS.textData $ "Facebook Users " `mappend` T.intercalate ", " (map (OA.name . fst) (clients s))
                             let i = counter s
                             let l = addClient c (clients s)
-                            let t = FB.name(fst c) `mappend` " joined"
+                            let t = OA.name(fst c) `mappend` " joined"
                             T.putStrLn t
                             broadcast t l
                             return (i,l)
                         loop1 s' c
                     "/acid" -> loop2 a' u
-                    "/data" -> loop3 ("data/image/"++T.unpack(FB.uid u)++".png")
+                    "/data" -> loop3 ("data/image/"++T.unpack(OA.uid u)++".png")
                     _ -> WS.sendTextData err
-            Left _ -> WS.sendTextData ("Facebook Login " `mappend` FB.url)
+            Left _ -> WS.sendTextData ("Facebook Login " `mappend` OA.url)
+        -}
         where
             catchDisconnect e =
                 case fromException e of
@@ -135,14 +156,14 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
 
 main :: IO ()
 main = do
-    putStrLn "http://localhost:9160/chat.htm"
+    putStrLn "http://localhost:9160/login.htm"
     createDirectoryIfMissing False "data"
     createDirectoryIfMissing False "data/image"
     chat <- newMVar (0,[])
-    acid <- JS.open'
+    acid <- DB.open'
     let s = defaultSettings { settingsPort = 9160, settingsIntercept = intercept (login chat acid) }
     runSettings s $ staticApp $ defaultWebAppSettings "www"
-    JS.close' acid
+    DB.close' acid
 
 {------------------------------------------
  - import Control.Concurrent (forkIO)

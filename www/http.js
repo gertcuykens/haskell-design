@@ -41,6 +41,26 @@ formJSON=function(v){
 
 JSONform=function(v,j){for(i in j)try{v[i].value=j[i]}catch(e){}}
 
+function setCookie(k,v,x)
+{
+ var t=new Date();
+ t.setDate(t.getDate() + x);
+ var v=escape(v) + ((x==null) ? "" : "; expires="+t.toUTCString());
+ document.cookie=k + "=" + v;
+}
+
+function getCookie(a)
+{
+ var i,k,v,c=document.cookie.split(";");
+ for (i=0;i<c.length;i++)
+ {
+  k=c[i].substr(0,c[i].indexOf("="));
+  k=k.replace(/^\s+|\s+$/g,"");
+  v=c[i].substr(c[i].indexOf("=")+1);
+  if (k==a) return unescape(v);
+ }
+}
+
 /*
 reader.addEventListener('load',(function(i){return function(e){i.src=e.target.result}})(d),false)
 
