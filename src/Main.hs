@@ -8,9 +8,11 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import System.Directory (createDirectoryIfMissing)
 --import Data.Char (isPunctuation, isSpace)
+import Data.Aeson (encode, decode)
 import Data.Aeson.TH (deriveJSON)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.ByteString as B
@@ -34,7 +36,16 @@ import Login
 --instance Eq (WS.Sink WS.Hybi10) where
 --    WS.Sink a == WS.Sink b = a == b
 
-data User = User T.Text T.Text T.Text T.Text T.Text T.Text T.Text T.Text T.Text
+data User = User { uid::T.Text
+                 , name::T.Text
+                 , given_name::T.Text
+                 , family_name::T.Text
+                 , link::T.Text
+                 , picture::T.Text
+                 , gender::T.Text
+                 , birthday::T.Text
+                 , locale::T.Text} deriving (Show)
+
 $(deriveJSON id ''User)
 
 type Counter = Int
@@ -114,10 +125,9 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                 --liftIO $ print accessToken
             "/acid" -> do
                 (Response a b c d) <- liftIO $ userinfo m
-                WS.sendTextData (d)
-                --encode d
-                --u = d.id
-                --liftIO (userinfo accessToken >>= print)
+                liftIO (print d)
+                let u = fromMaybe (error "invalid json") (decode d)
+                WS.sendTextData (uid u)
             _ -> WS.sendTextData err
         {-
         --u' <- liftIO (try $ OA.object (codePrefix, f m) (OA.Id "me") :: IO (Either SomeException OA.User))

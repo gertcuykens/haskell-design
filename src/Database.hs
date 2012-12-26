@@ -5,8 +5,7 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens ((?=), at, from, makeIso, peruse)
 import Data.Maybe (fromMaybe)
-import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode)
-import Data.Aeson.Encode (fromValue)
+import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode)
 import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Internal as BL
@@ -38,21 +37,19 @@ lookupKey k = peruse (from keyValue.at k)
 
 $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 
-read' :: MonadIO m => AcidState KeyValue -> Text -> m TL.Text
+read' :: MonadIO m => AcidState KeyValue -> Text -> m BL.ByteString
 read' s' k' = do
     let k = unpack k'
     u' <- query' s' (LookupKey k)
     case u' of
-        Just u ->return $ f u
-        Nothing -> return $ f (User "" "" "" "")
-        where f = TL.toLazyText . fromValue . toJSON
+        Just u -> return $ encode u
+        Nothing -> return $ encode (User "" "" "" "")
 
-write' :: MonadIO m => AcidState KeyValue -> Text -> TL.Text -> m ()
+write' :: MonadIO m => AcidState KeyValue -> Text -> BL.ByteString -> m ()
 write' s' k' v = do
     let k = unpack k'
-    let u = fromMaybe (error "invalid json") (f v)
+    let u = fromMaybe (error "invalid json") (decode v)
     update' s' (InsertKey k u)
-    where f = decode . TL.encodeUtf8
 
 open' :: MonadIO m => m (AcidState KeyValue)
 open' = liftIO $ openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
@@ -63,6 +60,11 @@ close' s' = do
     liftIO $ createArchive s'
 
 {-
+import Data.Aeson.Encode (fromValue)
+
+where f = decode . TL.encodeUtf8
+where f = TL.toLazyText . fromValue . toJSON
+
 import Control.Monad.State (get, put)
 import Control.Monad.Reader (ask)
 
@@ -75,14 +77,10 @@ lookupKey :: Key -> Query KeyValue (Maybe User)
 lookupKey k = do
     KeyValue m <- ask
     return (Map.lookup k m)
--}
 
-{-
 keyValue :: Simple Iso (Map.Map Key User) KeyValue
 keyValue = iso KeyValue getKeyValue
--}
 
-{-
 instance FromJSON User where
     parseJSON (Object v) = User <$> v .: "city"
                                 <*> v .: "country"
