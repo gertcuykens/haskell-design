@@ -190,17 +190,4 @@ main = do
  -
  - simpleHTTP nullConf fileServing
  ------------------------------------------}
---Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
-
-{-
- "id": "116469479527388802962",
- "name": "Gert Cuykens",
- "given_name": "Gert",
- "family_name": "Cuykens",
- "link": "https://plus.google.com/116469479527388802962",
- "picture": "https://lh5.googleusercontent.com/-Ar9QIaaTSJA/AAAAAAAAAAI/AAAAAAAAAXY/9P7CBht8ZRw/photo.jpg",
- "gender": "male",
- "birthday": "0000-10-01",
- "locale": "en"
--}
 
