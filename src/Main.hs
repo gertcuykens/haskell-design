@@ -126,30 +126,6 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                  Just (User a b c d e f g h i) <- liftIO $ userinfo' m
                  loop3 ("data/image/"++unpack a++".png")
             _ -> WS.sendTextData err
-        {-
-        --u' <- liftIO (try $ OA.object (codePrefix, f m) (OA.Id "me") :: IO (Either SomeException OA.User))
-        case u' of
-            Right u -> do
-                k <- WS.getSink
-                let c = (u, k)
-                WS.sendTextData ("Facebook Uid " `mappend` OA.uid u)
-                case request of
-                    "/chat" -> do
-                        WS.sendTextData ("Facebook Name " `mappend` OA.name u)
-                        liftIO $ modifyMVar_ s' $ \s -> do
-                            WS.sendSink k $ WS.textData $ "Facebook Users " `mappend` T.intercalate ", " (map (OA.name . fst) (clients s))
-                            let i = counter s
-                            let l = addClient c (clients s)
-                            let t = OA.name(fst c) `mappend` " joined"
-                            T.putStrLn t
-                            broadcast t l
-                            return (i,l)
-                        loop1 s' c
-                    "/acid" -> loop2 a' u
-                    "/data" -> loop3 ("data/image/"++T.unpack(OA.uid u)++".png")
-                    _ -> WS.sendTextData err
-            Left _ -> WS.sendTextData ("Facebook Login " `mappend` OA.url)
-        -}
         where
             catchDisconnect e =
                 case fromException e of
