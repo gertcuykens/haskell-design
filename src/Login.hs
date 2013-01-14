@@ -1,159 +1,99 @@
-{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
-module Login (AccessToken(..), authToken, userinfo) where
+{-# LANGUAGE OverloadedStrings, FlexibleContexts, TemplateHaskell #-}
+module Login (User(..), token, userinfo') where
 
+import Control.Applicative ((<$>), (<*>))
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad (mzero)
+import Data.Aeson (FromJSON, Value(Object), parseJSON, (.:), (.:?))
+import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.ByteString.Lazy.Internal as BL
+import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import Keys (googleKey)
 import Network.HTTP.Conduit (Response)
-import Network.OAuth2.HTTP.HttpClient
-import Network.OAuth2.OAuth2
-import System.Environment
+import Network.OAuth.OAuth2.HttpClient
+import Network.OAuth.OAuth2
+import Prelude hiding (id)
+import qualified Prelude as P (id)
+import System.Environment (getArgs)
 
-githubKeys :: OAuth2
-githubKeys = OAuth2 { oauthClientId = "xxxxxxxxxxxxxxx"
-                    , oauthClientSecret = "xxxxxxxxxxxxxxxxxxxxxx"
-                    , oauthCallback = Just "http://localhost:9160/code.htm"
-                    , oauthOAuthorizeEndpoint = "https://github.com/login/oauth/authorize"
-                    , oauthAccessTokenEndpoint = "https://github.com/login/oauth/access_token"
-                    , oauthAccessToken = Nothing}
+data Token = Token { issued_to   :: Text
+                   , audience    :: Text
+                   , user_id     :: Maybe Text
+                   , scope       :: Text
+                   , expires_in  :: Integer
+                   , email       :: Maybe Text
+                   , verified_email :: Maybe Bool
+                   , access_type :: Text
+                   } deriving (Show)
 
-githubScope :: QueryParams
-githubScope = [("scope", ""), ("access_type", "offline")]
+instance FromJSON Token where
+    parseJSON (Object o) = Token
+                           <$> o .:  "issued_to"
+                           <*> o .:  "audience"
+                           <*> o .:? "user_id"
+                           <*> o .:  "scope"
+                           <*> o .:  "expires_in"
+                           <*> o .:? "email"
+                           <*> o .:? "verified_email"
+                           <*> o .:  "access_type"
+    parseJSON _ = mzero
 
-facebookKeys :: OAuth2
-facebookKeys = OAuth2 { oauthClientId = ""
-                      , oauthClientSecret = ""
-                      , oauthCallback = Just "http://localhost:9160/code.htm"
-                      , oauthOAuthorizeEndpoint = "https://www.facebook.com/dialog/oauth"
-                      , oauthAccessTokenEndpoint = "https://graph.facebook.com/oauth/access_token"
-                      , oauthAccessToken = Nothing}
+data User = User { id          :: Text
+                 , name        :: Text
+                 , given_name  :: Text
+                 , family_name :: Text
+                 , link        :: Text
+                 , picture     :: Text
+                 , gender      :: Text
+                 , birthday    :: Text
+                 , locale      :: Text
+                 } deriving (Show)
 
-facebookScope :: QueryParams
-facebookScope = [("scope", "user_about_me,email")]
-
-googleKeys :: OAuth2
-googleKeys = OAuth2 { oauthClientId = ""
-                    , oauthClientSecret = ""
-                    , oauthCallback = Just "http://localhost:9160/code.htm"
-                    , oauthOAuthorizeEndpoint = "https://accounts.google.com/o/oauth2/auth"
-                    , oauthAccessTokenEndpoint = "https://accounts.google.com/o/oauth2/token"
-                    , oauthAccessToken = Nothing}
-
-googleScope :: QueryParams
-googleScope = [("scope", "https://www.googleapis.com/auth/userinfo.profile"), ("access_type", "offline")]
+$(deriveJSON P.id ''User)
 
 main :: IO ()
 main = do
-    (x:_) <- getArgs
-    case x of
-        "normal" -> normalCase
-        "offline" -> offlineCase
+    print $ authorizationUrl googleKey `appendQueryParam'` googleScopeUserInfo `appendQueryParam'` googleAccessOffline
+    putStrLn "visit the url and paste code here: "
+    code <- fmap BS.pack getLine
+    (Just (AccessToken accessToken refreshToken)) <- requestAccessToken googleKey code
+    print (accessToken, refreshToken)
+    validateToken accessToken >>= print
+    (validateToken' accessToken :: IO (Maybe Token)) >>= print
+    case refreshToken of
+        Nothing -> print "Failed to fetch refresh token"
+        Just tk -> do
+            (Just (AccessToken accessToken refreshToken)) <- refreshAccessToken googleKey tk
+            print (accessToken, refreshToken)
+            validateToken accessToken >>= print
+            (validateToken' accessToken :: IO (Maybe Token)) >>= print
 
-normalCase :: IO ()
-normalCase = do
-    print $ (authorizationUrl googleKeys) `appendQueryParam'` googleScope
-    putStrLn "visit the url and paste code here: "
-    code <- getLine
-    (Just (AccessToken accessToken refreshToken)) <- authToken (BS.pack code)
-    --validate accessToken >>= print
-    userinfo accessToken >>= print
-
-offlineCase :: IO ()
-offlineCase = do
-    print $ (authorizationUrl googleKeys) `appendQueryParam'` googleScope
-    putStrLn "visit the url and paste code here: "
-    code <- getLine
-    (Just (AccessToken accessToken refreshToken)) <- authToken (BS.pack code)
-    case refreshToken of
-        Nothing -> print "Failed to fetch refresh token"
-        Just t -> do
-        (Just (AccessToken accessToken Nothing)) <- authToken t
-        --validate accessToken >>= print
-        userinfo accessToken >>= print
-
-authToken :: BS.ByteString -> IO (Maybe AccessToken)
-authToken = requestAccessToken googleKeys
-
-validate :: BS.ByteString -> IO (Response BL.ByteString)
-validate accessToken = doSimpleGetRequest ("https://www.googleapis.com/oauth2/v1/tokeninfo" `appendQueryParam` (accessTokenToParam accessToken))
-
-userinfo :: BS.ByteString -> IO (Response BL.ByteString)
-userinfo accessToken = doSimpleGetRequest ("https://www.googleapis.com/oauth2/v2/userinfo" `appendQueryParam` (accessTokenToParam accessToken))
-
--- obtain a new access token with refresh token, which turns out only in response at first time.
--- Revoke Access https://www.google.com/settings/security
---
---rrl :: FB.RedirectUrl
---rrl = "http://localhost:9160/state.htm"
---url :: MonadIO m => m Text
---url = liftIO $ withManager $ \manager -> FB.runFacebookT app manager $ FB.getUserAccessTokenStep1 rrl extraParams
---      where extraParams = ["user_about_me", "email"]
---url >>= print
-
-{-
-facebookScope :: SimpleQuery
-facebookScope = [("scope", "user_about_me,email")]
-
-googleScopeEmail :: SimpleQuery
+googleScopeEmail :: QueryParams
 googleScopeEmail = [("scope", "https://www.googleapis.com/auth/userinfo.email")]
 
-googleScopeUserInfo :: SimpleQuery
+googleScopeUserInfo :: QueryParams
 googleScopeUserInfo = [("scope", "https://www.googleapis.com/auth/userinfo.profile")]
--}
 
-{-
-import qualified Facebook as FB
+googleAccessOffline :: QueryParams
+googleAccessOffline = [("access_type", "offline")
+                      ,("approval_prompt", "force")]
 
-app :: FB.Credentials
-app = FB.Credentials "localhost" (pack (BS.unpack (oauthClientId facebookKeys))) (pack (BS.unpack(oauthClientSecret facebookKeys)))
+validateToken :: BS.ByteString -> IO BL.ByteString
+validateToken accessToken = doSimpleGetRequest ("https://www.googleapis.com/oauth2/v1/tokeninfo" `appendQueryParam` (accessTokenToParam accessToken))
 
-object :: MonadIO m => FB.Argument -> FB.Id-> m FB.User
-object c u = liftIO $ withManager $ \manager -> FB.runFacebookT app manager $ do
-    t <- FB.getUserAccessTokenStep2 "http://localhost:9160/state.htm" [c]
-    FB.getUser u [] (Just t)
+validateToken' :: FromJSON Token => BS.ByteString -> IO (Maybe Token)
+validateToken' accessToken = doJSONGetRequest ("https://www.googleapis.com/oauth2/v1/tokeninfo" `appendQueryParam` (accessTokenToParam accessToken))
 
-email :: FB.User -> Text
-email o = fromMaybe "" (FB.userEmail o)
+userinfo :: BS.ByteString -> IO BL.ByteString
+userinfo accessToken = doSimpleGetRequest ("https://www.googleapis.com/oauth2/v2/userinfo" `appendQueryParam` (accessTokenToParam accessToken))
 
-name :: FB.User -> Text
-name o = fromMaybe "" (FB.userName o)
+userinfo' :: FromJSON User => BS.ByteString -> IO (Maybe User)
+userinfo' accessToken = doJSONGetRequest ("https://www.googleapis.com/oauth2/v2/userinfo" `appendQueryParam` (accessTokenToParam accessToken))
 
-uid :: FB.User -> Text
-uid o = FB.idCode $ FB.userId o
--}
-
-{-
-instance FromJSON User where
-    parseJSON (Object v) = User <$> v .: "id"
-                                <*> v .: "name"
-                                <*> v .: "given_name"
-                                <*> v .: "family_name"
-                                <*> v .: "link"
-                                <*> v .: "picture"
-                                <*> v .: "gender"
-                                <*> v .: "birthday"
-                                <*> v .: "locale"
-
-instance ToJSON User where
-    toJSON (User a b c d e f g h i) = object ["id"          .= a
-                                             ,"name"        .= b
-                                             ,"given_name"  .= c
-                                             ,"family_name" .= d
-                                             ,"link"        .= e
-                                             ,"picture"     .= f
-                                             ,"gender"      .= g
-                                             ,"birthday"    .= h
-                                             ,"locale"      .= i]
--}
-
-{-
- "id": "116469479527388802962",
- "name": "Gert Cuykens",
- "given_name": "Gert",
- "family_name": "Cuykens",
- "link": "https://plus.google.com/116469479527388802962",
- "picture": "https://lh5.googleusercontent.com/-Ar9QIaaTSJA/AAAAAAAAAAI/AAAAAAAAAXY/9P7CBht8ZRw/photo.jpg",
- "gender": "male",
- "birthday": "0000-10-01",
- "locale": "en"
--}
+token :: FromJSON User => BS.ByteString -> IO BS.ByteString
+token code = do
+    (Just (AccessToken accessToken refreshToken)) <- requestAccessToken googleKey code
+    return accessToken
 

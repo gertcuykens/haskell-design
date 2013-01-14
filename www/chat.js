@@ -1,13 +1,31 @@
 var token= getCookie('token')
-var users = []
 
-function acid(){
- var ws = createWebSocket(':9160/acid')
- ws.onopen = function(){ws.send(token)}
- ws.onmessage = function(event){JSONform(document.forms[0],JSON.parse(event.data))}
- ws.onclose = function() {}
+var acid = createWebSocket(':9160/acid')
+acid.onopen = function(){acid.send(token)}
+acid.onmessage = function(event){JSONform(document.forms[0],JSON.parse(event.data))}
+acid.onclose = function() {$('#warnings').append("Acid closed ");}
+
+var data = createWebSocket(':9160/data')
+data.binaryType = 'blob'
+data.onopen = function(){
+    dropBoxWS(data,document.getElementById('picture'))
+    data.send(token)
+    //var b=new Blob(['Facebook Code '+code],{"type":"text/plain"})
+    //console.log(ws1.bufferedAmount)
 }
-acid()
+data.onmessage = function(m){
+    if (m.data instanceof ArrayBuffer) console.log("Type ArrayBuffer")
+    if (m.data instanceof Blob){
+        //if (!m.data.type.match(/image.*/)){return false}
+        //m.data.type='image/png'
+        preview(m.data,document.getElementById('picture'))
+        //console.log("Type "+m.data.type)
+    }
+    if (typeof m.data === "string"){/*console.log("Type String")*/}
+}
+data.onclose = function() {$('#warnings').append("Data closed ");}
+
+var users = []
 
 function refreshUsers() {
     $('#users').html('');
@@ -33,50 +51,20 @@ function onMessage(event) {
     }
 }
 
-//$(document).ready(function () {
-
-function oooo(){
-
-    var ws1 = createWebSocket(':9160/data')
-    ws1.binaryType = 'blob'
-    ws1.onopen = function(){
-        dropBoxWS(ws1,document.getElementById('picture'))
-        ws1.send(token)
-        //var b=new Blob(['Facebook Code '+code],{"type":"text/plain"})
-        //console.log(ws1.bufferedAmount)
-    }
-    ws1.onmessage = function(m){
-        if (m.data instanceof ArrayBuffer) console.log("Type ArrayBuffer")
-        if (m.data instanceof Blob){
-            //if (!m.data.type.match(/image.*/)){return false}
-            //m.data.type='image/png'
-            preview(m.data,document.getElementById('picture'))
-            //console.log("Type "+m.data.type)
+var chat = createWebSocket(':9160/chat');
+chat.onopen = function(){chat.send(token)}
+chat.onmessage = function(event) {
+    $('#warnings').html('');
+    if (event.data.match('^Facebook Users ')){
+        var str = event.data.replace(/^Facebook Users /, '');
+        if(str != "") {
+            users = str.split(", ");
+            refreshUsers();
         }
-        if (typeof m.data === "string"){/*console.log("Type String")*/}
+        chat.onmessage = onMessage;
+        return true;
     }
-    ws1.onclose = function() {$('#warnings').append("Connection 1 Closed ");}
+    $('#warnings').append(event.data);
+};
+chat.onclose = function() {$('#warnings').append("Chat closed ");}
 
-    var ws2 = createWebSocket(':9160/chat');
-    ws2.onopen = function(){ws2.send(token)}
-    ws2.onmessage = function(event) {
-        $('#warnings').html('');
-        if (event.data.match('^Facebook Users ')){
-            var str = event.data.replace(/^Facebook Users /, '');
-            if(str != "") {
-                users = str.split(", ");
-                refreshUsers();
-            }
-            ws2.onmessage = onMessage;
-			return true;
-        }
-        $('#warnings').append(event.data);
-    };
-    ws2.onclose = function() {$('#warnings').append("Connection 2 Closed ");}
-
-}
-
-//});
-
-//$('#warnings').html('Connecting');
-//ws.close

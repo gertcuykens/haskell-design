@@ -13,12 +13,10 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
 import Data.Maybe (fromMaybe)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as BL
---import qualified Data.Text as T
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.Text (Text, unpack, pack, intercalate)
+--import qualified Data.Text.IO as T
 --import qualified Data.Text.Lazy as TL
 --import qualified Data.Text.Lazy.Encoding as TL
 import Network.HTTP.Conduit (Response(..))
@@ -35,18 +33,6 @@ import Login
 --deriving instance Eq (WS.Sink WS.Hybi10)
 --instance Eq (WS.Sink WS.Hybi10) where
 --    WS.Sink a == WS.Sink b = a == b
-
-data User = User { uid::T.Text
-                 , name::T.Text
-                 , given_name::T.Text
-                 , family_name::T.Text
-                 , link::T.Text
-                 , picture::T.Text
-                 , gender::T.Text
-                 , birthday::T.Text
-                 , locale::T.Text} deriving (Show)
-
-$(deriveJSON id ''User)
 
 type Counter = Int
 type Client = (User, WS.Sink WS.Hybi10)
@@ -68,13 +54,12 @@ removeClient :: Client -> [Client] -> [Client]
 removeClient c = filter ((/= snd c) . snd)
 --removeClient c = filter ((/= snd c) . snd)
 
-broadcast :: MonadIO m => T.Text -> [Client] -> m ()
+broadcast :: MonadIO m => Text -> [Client] -> m ()
 broadcast t = liftIO .: perform $ traverse._2.act (`WS.sendSink` WS.textData t)
 --broadcast t = (liftIO .) . perform $ traverse._2.act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO $ T.putStrLn t >> l ^! traverse . _2 . act (`WS.sendSink` WS.textData t)
 --broadcast t l = liftIO (T.putStrLn t) >> liftIO (forM_ l $ \(_, k) -> WS.sendSink k $ WS.textData t)
 
-{-
 loop1 :: MVar Clients -> Client -> WS.WebSockets WS.Hybi10 ()
 loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
     forever $ do
@@ -82,8 +67,8 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
         s <- liftIO $ readMVar s'
         let i = counter s + 1
         let l = clients s
-        let t = T.pack(show i) `mappend` " " `mappend` OA.name u `mappend` ": " `mappend` m
-        liftIO $ T.putStrLn t
+        let t = pack(show i) `mappend` " " `mappend` name u `mappend` ": " `mappend` m
+        liftIO $ print t
         broadcast t l
         liftIO $ modifyMVar_ s' $ \_ -> return (i,l)
     where
@@ -92,42 +77,54 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
                 Just WS.ConnectionClosed -> liftIO $ modifyMVar_ s' $ \s -> do
                     let i = counter s
                     let l = removeClient c (clients s)
-                    let t = OA.name u `mappend` " disconnected"
-                    liftIO $ T.putStrLn t
+                    let t = name u `mappend` " disconnected"
+                    liftIO $ print t
                     broadcast t l
                     return (i,l)
                 _ -> return ()
 
-loop2 ::  DB.AcidState DB.KeyValue -> OA.User -> WS.WebSockets WS.Hybi10 ()
-loop2 a' u' = forever $ do
-    DB.read' a' (OA.uid u') >>= WS.sendTextData
-    WS.receiveData >>= DB.write' a' (OA.uid u')
+loop2 ::  DB.AcidState DB.KeyValue -> Text -> WS.WebSockets WS.Hybi10 ()
+loop2 state id = forever $ do
+    DB.read' state id >>= WS.sendTextData
+    WS.receiveData >>= DB.write' state id
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
 loop3 p = forever $ do
-    f' <- liftIO ( try $ B.readFile p :: IO (Either SomeException B.ByteString) )
+    f' <- liftIO ( try $ BL.readFile p :: IO (Either SomeException BL.ByteString) )
     case f' of
         Right f -> WS.sendBinaryData f
         Left _ -> return ()
-    WS.receiveData >>= liftIO . B.writeFile p
--}
+    WS.receiveData >>= liftIO . BL.writeFile p
 
 login :: MVar Clients -> DB.AcidState DB.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
     --WS.getVersion >>= liftIO . print . ("Connection Open: " ++)
     WS.receiveData >>= \m -> do
-        --liftIO $ print (C.unpack m)
+        --liftIO $ print (BS.unpack m)
         case request of
             "/code" -> do
-                (Just (AccessToken accessToken Nothing)) <- liftIO $ authToken m
-                WS.sendTextData (accessToken)
-                --liftIO $ print accessToken
+                t <- liftIO $ token m
+                WS.sendTextData (t)
             "/acid" -> do
-                (Response a b c d) <- liftIO $ userinfo m
-                liftIO (print d)
-                let u = fromMaybe (error "invalid json") (decode d)
-                WS.sendTextData (uid u)
+                Just (User a b c d e f g h i) <- liftIO $ userinfo' m
+                loop2 a' a
+            "/chat" -> do
+                Just u@(User a b c d e f g h i) <- liftIO $ userinfo' m
+                WS.sendTextData ("Facebook Name " `mappend` b)
+                k <- WS.getSink
+                liftIO $ modifyMVar_ s' $ \s -> do
+                    WS.sendSink k $ WS.textData $ "Facebook Users " `mappend` intercalate ", " (map (name . fst) (clients s))
+                    let i = counter s
+                    let l = addClient (u,k) (clients s)
+                    let t = b `mappend` " joined"
+                    print t
+                    broadcast t l
+                    return (i,l)
+                loop1 s' (u,k)
+            "/data" -> do
+                 Just (User a b c d e f g h i) <- liftIO $ userinfo' m
+                 loop3 ("data/image/"++unpack a++".png")
             _ -> WS.sendTextData err
         {-
         --u' <- liftIO (try $ OA.object (codePrefix, f m) (OA.Id "me") :: IO (Either SomeException OA.User))
@@ -158,11 +155,11 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                 case fromException e of
                     Just WS.ConnectionClosed -> liftIO $ putStrLn "Connection Closed"
                     _ -> return ()
-            prefix = C.pack "Facebook Code "
-            f=C.drop (C.length prefix)
-            codePrefix= C.pack "code"
-            request = C.unpack(WS.requestPath r')
-            err= C.pack("Unkown Request "++request)
+            prefix = BS.pack "Facebook Code "
+            f= BS.drop (BS.length prefix)
+            codePrefix= BS.pack "code"
+            request = BS.unpack(WS.requestPath r')
+            err= BS.pack("Unkown Request "++request)
 
 main :: IO ()
 main = do
@@ -194,3 +191,16 @@ main = do
  - simpleHTTP nullConf fileServing
  ------------------------------------------}
 --Left _ -> FB.url >>= \url -> WS.sendTextData ("Facebook Login " `mappend` url)
+
+{-
+ "id": "116469479527388802962",
+ "name": "Gert Cuykens",
+ "given_name": "Gert",
+ "family_name": "Cuykens",
+ "link": "https://plus.google.com/116469479527388802962",
+ "picture": "https://lh5.googleusercontent.com/-Ar9QIaaTSJA/AAAAAAAAAAI/AAAAAAAAAXY/9P7CBht8ZRw/photo.jpg",
+ "gender": "male",
+ "birthday": "0000-10-01",
+ "locale": "en"
+-}
+

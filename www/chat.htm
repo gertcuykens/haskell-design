@@ -25,7 +25,7 @@
             </div>
             <div id="profile-section">
                 <h2>Profile</h2>
-                <form id="profile-form" action="javascript: ws0.send(JSON.stringify(formJSON(document.forms[0])))">
+                <form id="profile-form" action="javascript: acid.send(JSON.stringify(formJSON(document.forms[0])))">
                     <img id="picture" src="picture.png" alt="picture" />
                     <label>city:</label>    <br/><input name="city"   /><br/>
                     <label>country:</label> <br/><input name="country"/><br/>
@@ -35,7 +35,7 @@
             </div>
             <div id="footer">
                 <input id="text" />
-                <input id="talk"   type="button" value="Send"   onclick="ws2.send($('#text').val());$('#text').val('')"/>
+                <input id="talk"   type="button" value="Send"   onclick="chat.send($('#text').val());$('#text').val('')"/>
                 <input id="update" type="button" value="Update" onclick="document.forms[0].submit()"/>
             </div>
         </div>

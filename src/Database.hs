@@ -8,11 +8,11 @@ import Data.Maybe (fromMaybe)
 import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode)
 import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.ByteString.Lazy.Internal as BL
+import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Text (Text, unpack)
-import qualified Data.Text.Lazy.Builder as TL (toLazyText)
-import qualified Data.Text.Lazy.Internal as TL (Text)
-import qualified Data.Text.Lazy.Encoding as TL (encodeUtf8)
+--import qualified Data.Text.Lazy.Builder as TL (toLazyText)
+--import qualified Data.Text.Lazy.Internal as TL (Text)
+--import qualified Data.Text.Lazy.Encoding as TL (encodeUtf8)
 import Data.Acid (AcidState, Update, Query, openLocalStateFrom, makeAcidic)
 import Data.Acid.Advanced (query', update')
 import Data.Acid.Local (createCheckpointAndClose, createArchive)
@@ -20,19 +20,22 @@ import Data.SafeCopy (deriveSafeCopy, base)
 import Data.Typeable (Typeable)
 import qualified Data.Map as Map (Map, empty)
 
-type Key = String
-data User = User Text Text Text Text deriving Typeable
-newtype KeyValue = KeyValue (Map.Map Key User)
+data User = User {city::Text
+                 ,country::Text
+                 ,phone::Text
+                 ,email::Text} deriving Typeable
+
+newtype KeyValue = KeyValue (Map.Map String User)
 
 $(deriveJSON id ''User)
 $(deriveSafeCopy 0 'base ''User)
 $(deriveSafeCopy 0 'base ''KeyValue)
 $(makeIso ''KeyValue)
 
-insertKey :: Key -> User -> Update KeyValue ()
+insertKey :: String -> User -> Update KeyValue ()
 insertKey k v = from keyValue.at k?=v
 
-lookupKey :: Key -> Query KeyValue (Maybe User)
+lookupKey :: String -> Query KeyValue (Maybe User)
 lookupKey k = peruse (from keyValue.at k)
 
 $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
@@ -46,10 +49,10 @@ read' s' k' = do
         Nothing -> return $ encode (User "" "" "" "")
 
 write' :: MonadIO m => AcidState KeyValue -> Text -> BL.ByteString -> m ()
-write' s' k' v = do
+write' s' k' v' = do
     let k = unpack k'
-    let u = fromMaybe (error "invalid json") (decode v)
-    update' s' (InsertKey k u)
+    let v = fromMaybe (error "invalid json") (decode v')
+    update' s' (InsertKey k v)
 
 open' :: MonadIO m => m (AcidState KeyValue)
 open' = liftIO $ openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
