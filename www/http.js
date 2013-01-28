@@ -14,15 +14,22 @@ dropBoxWS=function(s,d){
   for (var i=0;i<f.length;i++){preview(f[i],d);s.send(f[i])}
   //console.log(s.bufferedAmount)
  }
+ var click=function(e){input.click()}
+ var change=function(e){for (var i=0;i<this.files.length;i++){preview(this.files[i],d);s.send(this.files[i])}}
+ var input=document.createElement('input')
+ input.type='file'
+ input.addEventListener('change',change,false)
  d.addEventListener('dragenter',dragenter,false)
  d.addEventListener('dragover',dragover,false)
  d.addEventListener('drop',drop,false)
+ d.addEventListener('click',click,false)
 }
 
 preview=function(f,d){
  var reader=new FileReader()
  reader.onload=(function(i){return function(e){i.src=e.target.result}})(d)
  reader.readAsDataURL(f)
+ //console.log(f.name)
 }
 
 formURI=function(v){
