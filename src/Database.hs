@@ -3,7 +3,7 @@ module Database (AcidState, KeyValue, read', write', open', close') where
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Lens ((?=), at, from, makeIso, peruse)
+import Control.Lens ((?=), at, from, makeIso, view)
 import Data.Maybe (fromMaybe)
 import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode)
 import Data.Aeson.TH (deriveJSON)
@@ -36,7 +36,7 @@ insertKey :: String -> User -> Update KeyValue ()
 insertKey k v = from keyValue.at k?=v
 
 lookupKey :: String -> Query KeyValue (Maybe User)
-lookupKey k = peruse (from keyValue.at k)
+lookupKey k = view (from keyValue.at k)
 
 $(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
 

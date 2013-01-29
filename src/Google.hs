@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, FlexibleContexts, TemplateHaskell #-}
-module Login (User(..), token, userinfo') where
+module Google (User(..), token, userinfo') where
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
