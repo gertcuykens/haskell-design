@@ -26,11 +26,9 @@ import Data.Text (Text, unpack, pack, intercalate)
 --import qualified Data.Text.Lazy.Encoding as TL
 --import Network.HTTP.Conduit (Response(..))
 import Network.Mime (defaultMimeMap, mimeByExt, defaultMimeType)
-import Network.Wai.Application.Static (staticApp, defaultWebAppSettings)
-import Network.Wai.Application.Static (staticApp, defaultFileServerSettings)
-import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsPort)
-import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsHost, settingsPort)
---import Network.Wai.Handler.WarpTLS (TLSSettings, runTLS)
+import Network.Wai.Application.Static (staticApp, defaultWebAppSettings, defaultFileServerSettings)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsHost, settingsPort)
+import Network.Wai.Handler.WarpTLS (TLSSettings(..), runTLS)
 import Network.Wai.Handler.WebSockets (intercept)
 import Network.Wai.Middleware.Autohead
 import Network.Wai.Middleware.RequestLogger (logStdout)
@@ -39,7 +37,7 @@ import qualified Network.WebSockets as WS
 import Text.Printf (printf)
 import WaiAppStatic.Types (ssIndices, toPiece, ssGetMimeType, fileName, fromPiece)
 import qualified Database as DB
-import qualified Google as Google
+import qualified Google
 
 data Args = Args
     { docroot :: FilePath
@@ -51,6 +49,12 @@ data Args = Args
     , mime :: [(String, String)]
     , host :: String
     } deriving (Show, Data, Typeable)
+
+defaultArgs :: Args
+defaultArgs = Args "www" ["index.html", "index.htm"] 9160 False False False [] "*"
+
+defaultTLS :: TLSSettings
+defaultTLS = TLSSettings "ssl/cert.pem" "ssl/key.pem"
 
 type Counter = Int
 type Client = (Google.User, WS.Sink WS.Hybi10)
@@ -155,9 +159,6 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
             request = BS.unpack(WS.requestPath r')
             err= BS.pack("Unkown Request "++request)
 
-defaultArgs :: Args
-defaultArgs = Args "www" ["index.html", "index.htm"] 9160 False False False [] "*"
-
 main :: IO ()
 main = do
     Args {..} <- cmdArgs defaultArgs
@@ -172,9 +173,7 @@ main = do
     createDirectoryIfMissing False "data/image"
     chat <- newMVar (0,[])
     acid <- DB.open'
-    --let s = defaultSettings { settingsPort = 9160, settingsIntercept = intercept (login chat acid) }
-    --runSettings s $ staticApp $ defaultWebAppSettings "www"
-    runSettings defaultSettings
+    runTLS defaultTLS defaultSettings
         { settingsPort = port
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
