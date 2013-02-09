@@ -1,11 +1,3 @@
-createWebSocket=function(path) {
- var host = window.location.hostname;
- if(host == '') host = 'localhost';
- var uri = 'wss://' + host + path;
- var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
- return new Socket(uri);
-}
-
 dropBoxWS=function(s,d){
  var dragenter=function(e){e.stopPropagation();e.preventDefault()}
  var dragover=function(e){e.stopPropagation();e.preventDefault()}
@@ -69,6 +61,14 @@ function getCookie(a)
 }
 
 /*
+createWebSocket=function(path) {
+ var host = window.location.hostname;
+ if(host == '') host = 'localhost';
+ var uri = 'wss://' + host + path;
+ var Socket = "MozWebSocket" in window ? MozWebSocket : WebSocket;
+ return new Socket(uri);
+}
+
 reader.addEventListener('load',(function(i){return function(e){i.src=e.target.result}})(d),false)
 
 progress = function(s){

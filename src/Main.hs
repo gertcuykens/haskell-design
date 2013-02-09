@@ -1,11 +1,10 @@
-{-# LANGUAGE OverloadedStrings, TemplateHaskell, RecordWildCards, DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, DeriveDataTypeable #-}
 module Main where
 
 import Control.Arrow ((***))
 import Control.Exception (SomeException, try, fromException)
 import Control.Lens (perform, traverse, act, _2)
-import Control.Monad (forever)
-import Control.Monad (unless)
+import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import System.Console.CmdArgs hiding (def)
@@ -122,17 +121,12 @@ login :: MVar Clients -> DB.AcidState DB.KeyValue -> WS.Request -> WS.WebSockets
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
     --WS.getVersion >>= liftIO . print . ("Connection Open: " ++)
-    WS.receiveData >>= \m -> do
-        --liftIO $ print (BS.unpack m)
+    WS.receiveData >>= \m ->
+        --liftIO (print (BS.unpack m)) >>
         case request of
-            "/code" -> do
-                t <- liftIO $ Google.token m
-                WS.sendTextData (t)
-            "/acid" -> do
-                Just (Google.User a b c d e f g h i) <- liftIO $ Google.userinfo' m
-                loop2 a' a
-            "/chat" -> do
-                Just u@(Google.User a b c d e f g h i) <- liftIO $ Google.userinfo' m
+            "/code" -> liftIO (Google.token m) >>= WS.sendTextData
+            "/acid" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop2 a' a
+            "/chat" -> liftIO (Google.userinfo' m) >>= \(Just u@(Google.User a b _ _ _ _ _ _ _)) -> do
                 WS.sendTextData ("Facebook Name " `mappend` b)
                 k <- WS.getSink
                 liftIO $ modifyMVar_ s' $ \s -> do
@@ -144,9 +138,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     broadcast t l
                     return (i,l)
                 loop1 s' (u,k)
-            "/data" -> do
-                 Just (Google.User a b c d e f g h i) <- liftIO $ Google.userinfo' m
-                 loop3 ("data/image/"++unpack a++".png")
+            "/data" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop3 ("data/image/"++unpack a++".png")
             _ -> WS.sendTextData err
         where
             catchDisconnect e =
