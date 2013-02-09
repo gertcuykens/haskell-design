@@ -13,8 +13,8 @@ googleKey = OAuth2 { oauthClientId = ""
 
 facebookKey :: OAuth2
 facebookKey = OAuth2 { oauthClientId = ""
-                      , oauthClientSecret = ""
-                      , oauthCallback = Just "https://localhost:9160/code.htm"
-                      , oauthOAuthorizeEndpoint = "https://www.facebook.com/dialog/oauth"
-                      , oauthAccessTokenEndpoint = "https://graph.facebook.com/oauth/access_token"
-                      , oauthAccessToken = Nothing}
+                     , oauthClientSecret = ""
+                     , oauthCallback = Just "https://localhost:9160/code.htm"
+                     , oauthOAuthorizeEndpoint = "https://www.facebook.com/dialog/oauth"
+                     , oauthAccessTokenEndpoint = "https://graph.facebook.com/oauth/access_token"
+                     , oauthAccessToken = Nothing}
