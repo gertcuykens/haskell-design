@@ -8,7 +8,7 @@
             if (!(state instanceof Array)){state=['state=chat&']}
             state=state[0].substring(6,state[0].indexOf('&'))
             var code = document.URL.match('code=.*')[0].replace(/^.*code=/,'')
-            var ws = new WebSocket('wss:localhost:9160/code')
+            var ws = new WebSocket('ws:localhost:9160/code')
             ws.onopen = function(){ws.send(code)}
             ws.onmessage = function(e){setCookie("token",e.data,1)}
             ws.onclose = function(){document.location=state+".htm"}

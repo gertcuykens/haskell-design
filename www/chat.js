@@ -1,11 +1,11 @@
 var token= getCookie('token')
 
-var acid = new WebSocket('wss://localhost:9160/acid')
+var acid = new WebSocket('ws://localhost:9160/acid')
 acid.onopen = function(){acid.send(token)}
 acid.onmessage = function(event){JSONform(document.forms[0],JSON.parse(event.data))}
 acid.onclose = function() {$('#warnings').append("Acid closed ");}
 
-var data = new WebSocket('wss://localhost:9160/data')
+var data = new WebSocket('ws://localhost:9160/data')
 data.binaryType = 'blob'
 data.onopen = function(){
     dropBoxWS(data,document.getElementById('picture'))
@@ -51,7 +51,7 @@ function onMessage(event) {
     }
 }
 
-var chat = new WebSocket('wss://localhost:9160/chat');
+var chat = new WebSocket('ws://localhost:9160/chat');
 chat.onopen = function(){chat.send(token)}
 chat.onmessage = function(event) {
     $('#warnings').html('');

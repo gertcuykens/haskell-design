@@ -2,21 +2,21 @@
 module Google (User(..), token, userinfo') where
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad.IO.Class (MonadIO, liftIO)
+--import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (mzero)
 import Data.Aeson (FromJSON, Value(Object), parseJSON, (.:), (.:?))
 import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
-import Data.Maybe (fromMaybe)
+--import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Keys (googleKey)
-import Network.HTTP.Conduit (Response)
+--import Network.HTTP.Conduit (Response)
 import Network.OAuth.OAuth2.HttpClient
 import Network.OAuth.OAuth2
 import Prelude hiding (id)
 import qualified Prelude as P (id)
-import System.Environment (getArgs)
+--import System.Environment (getArgs)
 
 data Token = Token { issued_to   :: Text
                    , audience    :: Text
