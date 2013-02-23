@@ -2,11 +2,12 @@
 module Main where
 
 import Control.Arrow ((***))
+--import Control.Concurrent (forkIO)
+import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import Control.Exception (SomeException, try, fromException)
 import Control.Lens (perform, traverse, act, _2)
 import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import System.Console.CmdArgs hiding (def)
 import System.Directory (createDirectoryIfMissing, canonicalizePath)
 --import Data.Char (isPunctuation, isSpace)
@@ -14,7 +15,7 @@ import System.Directory (createDirectoryIfMissing, canonicalizePath)
 --import Data.Aeson.TH (deriveJSON)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as Map
@@ -25,9 +26,9 @@ import Data.Text (Text, unpack, pack, intercalate)
 --import qualified Data.Text.Lazy.Encoding as TL
 --import Network.HTTP.Conduit (Response(..))
 import Network.Mime (defaultMimeMap, mimeByExt, defaultMimeType)
-import Network.Wai.Application.Static (staticApp, defaultWebAppSettings, defaultFileServerSettings)
+import Network.Wai.Application.Static (staticApp, defaultFileServerSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsHost, settingsPort)
-import Network.Wai.Handler.WarpTLS (TLSSettings(..), runTLS)
+--import Network.Wai.Handler.WarpTLS (TLSSettings(..), runTLS)
 import Network.Wai.Handler.WebSockets (intercept)
 import Network.Wai.Middleware.Autohead
 import Network.Wai.Middleware.RequestLogger (logStdout)
@@ -52,8 +53,8 @@ data Args = Args
 defaultArgs :: Args
 defaultArgs = Args "www" ["index.html", "index.htm"] 9160 False False False [] "*"
 
-defaultTLS :: TLSSettings
-defaultTLS = TLSSettings "ssl/cert.pem" "ssl/key.pem"
+--defaultTLS :: TLSSettings
+--defaultTLS = TLSSettings "ssl/cert.pem" "ssl/key.pem"
 
 type Counter = Int
 type Client = (Google.User, WS.Sink WS.Hybi10)
@@ -126,7 +127,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
         case request of
             "/code" -> liftIO (Google.token m) >>= WS.sendTextData
             "/acid" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop2 a' a
-            "/chat" -> liftIO (Google.userinfo' m) >>= \(Just u@(Google.User a b _ _ _ _ _ _ _)) -> do
+            "/chat" -> liftIO (Google.userinfo' m) >>= \(Just u@(Google.User _ b _ _ _ _ _ _ _)) -> do
                 WS.sendTextData ("Facebook Name " `mappend` b)
                 k <- WS.getSink
                 liftIO $ modifyMVar_ s' $ \s -> do
@@ -145,9 +146,6 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                 case fromException e of
                     Just WS.ConnectionClosed -> liftIO $ putStrLn "Connection Closed"
                     _ -> return ()
-            prefix = BS.pack "Facebook Code "
-            f= BS.drop (BS.length prefix)
-            codePrefix= BS.pack "code"
             request = BS.unpack(WS.requestPath r')
             err= BS.pack("Unkown Request "++request)
 
@@ -165,7 +163,8 @@ main = do
     createDirectoryIfMissing False "data/image"
     chat <- newMVar (0,[])
     acid <- DB.open'
-    runTLS defaultTLS defaultSettings
+    --runTLS defaultTLS defaultSettings
+    runSettings defaultSettings
         { settingsPort = port
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
@@ -175,22 +174,20 @@ main = do
         }
     DB.close' acid
 
-{------------------------------------------
- - import Control.Concurrent (forkIO)
- -
+{---------------snap-----------------------
+ - import qualified Network.WebSockets.Snap as WS
+ - import Snap.Http.Server (httpServe, setAccessLog, setErrorLog, setPort, ConfigLog(..))
+ - import Snap.Util.FileServe (serveDirectory)
+ - let config = setErrorLog ConfigNoLog $ setAccessLog ConfigNoLog $ setPort 8000 mempty
+ - httpServe config $ serveDirectory $ fromString docroot
+ ---------------ws-------------------------
  - WS.runServer "0.0.0.0" 9160 $ login chat acid
- -
+ ---------------happstack------------------
  - import Happstack.Server (ServerPart, Response, Browsing(EnableBrowsing), simpleHTTP, nullConf, serveDirectory)
- -
  - fileServing :: ServerPart Response
  - fileServing = serveDirectory EnableBrowsing ["state.htm"] "www"
- -
  - conf :: Conf
- - conf = Conf { port = 8000
- -             , validator = Nothing
- -             , logAccess = Just logMAccess
- -             , timeout = 30}
- -
+ - conf = Conf { port = 8000, validator = Nothing, logAccess = Just logMAccess, timeout = 30}
  - simpleHTTP nullConf fileServing
  ------------------------------------------}
 

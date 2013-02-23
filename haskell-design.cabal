@@ -14,7 +14,7 @@ description: sudo apt-get libgmp3-dev
              Prelude> :l src/Main.hs
              *Main> :main
              .
-             http://localhost:8000/
+             http://localhost:9160/
 
 homepage: https://github.com/gertcuykens/haskell-design.git
 license: GPL-3
