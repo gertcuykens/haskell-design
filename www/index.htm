@@ -1,11 +1,45 @@
 <!DOCTYPE html>
 <html>
- <head>
-  <title>Login</title>
- </head>
- <body>
-  <a href='https://accounts.google.com/o/oauth2/auth?client_id=951186128040.apps.googleusercontent.com&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A9160%2Fcode.htm&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&access_type=offline&approval_prompt=force'>Google (http)</a>
-  <a href='https://accounts.google.com/o/oauth2/auth?client_id=951186128040.apps.googleusercontent.com&response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A9160%2Fcode.htm&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&access_type=offline&approval_prompt=force'>Google (https)</a>
- </body>
+    <head>
+        <title>Code</title>
+        <link type="text/css" href="index.css" rel="stylesheet"/>
+        <script type="text/JavaScript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+        <script type="text/JavaScript" src="http.js"></script>
+        <script type="text/JavaScript" src="index.js"></script>
+	</head>
+    <body>
+        <h1>Haskell WebSockets example</h1>
+        <div id="main">
+            <div id="warnings">
+                Pleas login
+                <a href='https://accounts.google.com/o/oauth2/auth?client_id=951186128040.apps.googleusercontent.com&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A9160%2F&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&access_type=offline&approval_prompt=force'>Google (http)</a>
+            </div>
+            <div id="chat-section">
+                <h2>Facebook Chat</h2>
+                <div id="messages">
+                </div>
+            </div>
+            <div id="users-section">
+                <h2>Users</h2>
+                <ul id="users">
+                </ul>
+            </div>
+            <div id="profile-section">
+                <h2>Profile</h2>
+                <form id="profile-form" action="javascript: acid.send(JSON.stringify(formJSON(document.forms[0])))">
+                    <img id="picture" src="picture.png" alt="picture" />
+                    <label>city:</label>    <br/><input name="city"   /><br/>
+                    <label>country:</label> <br/><input name="country"/><br/>
+                    <label>phone:</label>   <br/><input name="phone"  /><br/>
+                    <label>email:</label>   <br/><input name="email"  /><br/>
+                </form>
+            </div>
+            <div id="footer">
+                <input id="text" />
+                <input id="talk"   type="button" value="Send"   onclick="chat.send($('#text').val());$('#text').val('')"/>
+                <input id="update" type="button" value="Update" onclick="document.forms[0].submit()"/>
+            </div>
+        </div>
+    </body>
 </html>
 
