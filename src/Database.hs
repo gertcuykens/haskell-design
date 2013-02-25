@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
 module Database (AcidState, KeyValue, read', write', open', close') where
-
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens ((?=), at, from, makeIso, view)
@@ -10,9 +9,6 @@ import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Text (Text, unpack)
---import qualified Data.Text.Lazy.Builder as TL (toLazyText)
---import qualified Data.Text.Lazy.Internal as TL (Text)
---import qualified Data.Text.Lazy.Encoding as TL (encodeUtf8)
 import Data.Acid (AcidState, Update, Query, openLocalStateFrom, makeAcidic)
 import Data.Acid.Advanced (query', update')
 import Data.Acid.Local (createCheckpointAndClose, createArchive)
@@ -54,15 +50,16 @@ write' s' k' v' = do
     let v = fromMaybe (error "invalid json") (decode v')
     update' s' (InsertKey k v)
 
-open' :: MonadIO m => m (AcidState KeyValue)
-open' = liftIO $ openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
+open' :: IO (AcidState KeyValue)
+open' = openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
 
-close' :: MonadIO m => AcidState KeyValue -> m ()
-close' s' = do
-    liftIO $ createCheckpointAndClose s'
-    liftIO $ createArchive s'
+close' :: AcidState KeyValue -> IO ()
+close' s' = createCheckpointAndClose s' >> createArchive s'
 
 {-
+import qualified Data.Text.Lazy.Builder as TL (toLazyText)
+import qualified Data.Text.Lazy.Internal as TL (Text)
+import qualified Data.Text.Lazy.Encoding as TL (encodeUtf8)
 import Data.Aeson.Encode (fromValue)
 
 where f = decode . TL.encodeUtf8

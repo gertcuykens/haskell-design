@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, DeriveDataTypeable #-}
 module Main where
-
 import Control.Arrow ((***))
 --import Control.Concurrent (forkIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
@@ -10,9 +9,6 @@ import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Console.CmdArgs hiding (def)
 import System.Directory (createDirectoryIfMissing, canonicalizePath)
---import Data.Char (isPunctuation, isSpace)
---import Data.Aeson (encode, decode)
---import Data.Aeson.TH (deriveJSON)
 import Data.Monoid (mappend)
 import Data.Function.Pointless ((.:))
 import Data.Maybe (mapMaybe)
@@ -21,9 +17,6 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as Map
 import Data.String (fromString)
 import Data.Text (Text, unpack, pack, intercalate)
---import qualified Data.Text.IO as T
---import qualified Data.Text.Lazy as TL
---import qualified Data.Text.Lazy.Encoding as TL
 --import Network.HTTP.Conduit (Response(..))
 import Network.Mime (defaultMimeMap, mimeByExt, defaultMimeType)
 import Network.Wai.Application.Static (staticApp, defaultFileServerSettings)
@@ -151,18 +144,16 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
 
 main :: IO ()
 main = do
-    Args {..} <- cmdArgs defaultArgs
-    let mime' = map (pack *** BS.pack) mime
-    let mimeMap = Map.fromList mime' `Map.union` defaultMimeMap
-    docroot' <- canonicalizePath docroot
-    unless quiet $ printf "Serving directory %s on port %d with %s index files.\nhttp://localhost:9160\n" docroot' port (if noindex then "no" else show index)
-    let middle = gzip def
-               . (if verbose then logStdout else id)
-               . autohead
     createDirectoryIfMissing False "data"
     createDirectoryIfMissing False "data/image"
     chat <- newMVar (0,[])
     acid <- DB.open'
+    Args {..} <- cmdArgs defaultArgs
+    let mime' = map (pack *** BS.pack) mime
+    let mimeMap = Map.fromList mime' `Map.union` defaultMimeMap
+    let middle = gzip def . (if verbose then logStdout else id) . autohead
+    docroot' <- canonicalizePath docroot
+    unless quiet $ printf "Serving directory %s on port %d with %s index files.\nhttp://localhost:9160\n" docroot' port (if noindex then "no" else show index)
     --runTLS defaultTLS defaultSettings
     runSettings defaultSettings
         { settingsPort = port
