@@ -150,18 +150,19 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
             request = BS.unpack(WS.requestPath r')
             err= BS.pack("Unkown Request "++request)
 
+{-
 proxy1 :: Application
-proxy1 = liftIO $ do
-    manager <- newManager def
-    waiProxyTo (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443) defaultOnExc manager
+proxy1 req = do
+    manager <- liftIO $ newManager def
+    waiProxyTo (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443) defaultOnExc manager req
 
 proxy2 :: Request -> ResourceT IO Response
-proxy2 = liftIO $ do
-    manager <- newManager def
+proxy2 req = do
+    manager <- liftIO $ newManager def
     waiProxyToSettings
         (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443)
         def { wpsOnExc = onExc, wpsTimeout = Nothing}
-        manager
+        manager req
     where
         onExc _ _ = return $ responseLBS
             status200
@@ -169,6 +170,7 @@ proxy2 = liftIO $ do
             , ("Refresh", "1")
             ]
             "<h1>App not ready, please refresh</h1>"
+-}
 
 main :: IO ()
 main = do
@@ -187,7 +189,8 @@ main = do
         { settingsPort = port
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
-        } $ middle $ staticApp (defaultFileServerSettings $ fromString docroot)
+        }
+        $ middle $ staticApp (defaultFileServerSettings $ fromString docroot)
         { ssIndices = if noindex then [] else mapMaybe (toPiece . pack) index
         , ssGetMimeType = return . mimeByExt mimeMap defaultMimeType . fromPiece . fileName
         }
