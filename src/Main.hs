@@ -7,18 +7,26 @@ import Control.Exception (SomeException, try, fromException)
 import Control.Lens (perform, traverse, act, _2)
 import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import System.Console.CmdArgs hiding (def)
+import Control.Monad.Trans.Resource (ResourceT)
+import System.Console.CmdArgs (cmdArgs)
 import System.Directory (createDirectoryIfMissing, canonicalizePath)
-import Data.Monoid (mappend)
-import Data.Function.Pointless ((.:))
-import Data.Maybe (mapMaybe)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
+--import Data.Conduit.Network (Application)
+import Data.Data (Data)
+import Data.Function.Pointless ((.:))
 import qualified Data.Map as Map
+import Data.Maybe (mapMaybe)
+import Data.Monoid (mappend)
 import Data.String (fromString)
 import Data.Text (Text, unpack, pack, intercalate)
---import Network.HTTP.Conduit (Response(..))
-import Network.Mime (defaultMimeMap, mimeByExt, defaultMimeType)
+import Data.Typeable (Typeable)
+import Network.HTTP.Conduit (def, newManager) -- Response(..))
+--import Network.HTTP.ReverseProxy  (WPRProxyDest)
+import Network.HTTP.ReverseProxy  (ProxyDest(..), waiProxyToSettings, defaultOnExc, waiProxyTo, waiProxyToSettings, wpsTimeout, wpsOnExc)
+import Network.HTTP.Types (status200)
+import Network.Mime (MimeMap, defaultMimeMap, mimeByExt, defaultMimeType)
+import Network.Wai (Application, Request, Response, responseLBS)
 import Network.Wai.Application.Static (staticApp, defaultFileServerSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsHost, settingsPort)
 --import Network.Wai.Handler.WarpTLS (TLSSettings(..), runTLS)
@@ -41,7 +49,7 @@ data Args = Args
     , verbose :: Bool
     , mime :: [(String, String)]
     , host :: String
-    } deriving (Show, Data, Typeable)
+    } deriving (Show, Typeable, Data)
 
 defaultArgs :: Args
 defaultArgs = Args "www" ["index.html", "index.htm"] 9160 False False False [] "*"
@@ -141,6 +149,26 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     _ -> return ()
             request = BS.unpack(WS.requestPath r')
             err= BS.pack("Unkown Request "++request)
+
+proxy1 :: Application
+proxy1 = liftIO $ do
+    manager <- newManager def
+    waiProxyTo (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443) defaultOnExc manager
+
+proxy2 :: Request -> ResourceT IO Response
+proxy2 = liftIO $ do
+    manager <- newManager def
+    waiProxyToSettings
+        (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443)
+        def { wpsOnExc = onExc, wpsTimeout = Nothing}
+        manager
+    where
+        onExc _ _ = return $ responseLBS
+            status200
+            [ ("content-type", "text/html")
+            , ("Refresh", "1")
+            ]
+            "<h1>App not ready, please refresh</h1>"
 
 main :: IO ()
 main = do
