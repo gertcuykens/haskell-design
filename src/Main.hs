@@ -8,6 +8,7 @@ import Control.Lens (perform, traverse, act, _2)
 import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Resource (ResourceT)
+import Control.Monad.Trans.Class (lift)
 import System.Console.CmdArgs (cmdArgs)
 import System.Directory (createDirectoryIfMissing, canonicalizePath)
 import qualified Data.ByteString.Char8 as BS
@@ -26,7 +27,7 @@ import Network.HTTP.Conduit (def, newManager) -- Response(..))
 import Network.HTTP.ReverseProxy  (ProxyDest(..), waiProxyToSettings, defaultOnExc, waiProxyTo, waiProxyToSettings, wpsTimeout, wpsOnExc)
 import Network.HTTP.Types (status200)
 import Network.Mime (MimeMap, defaultMimeMap, mimeByExt, defaultMimeType)
-import Network.Wai (Application, Request, Response, responseLBS)
+import Network.Wai (Application, Middleware, Request(..), Response, responseLBS)
 import Network.Wai.Application.Static (staticApp, defaultFileServerSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsHost, settingsPort)
 --import Network.Wai.Handler.WarpTLS (TLSSettings(..), runTLS)
@@ -150,15 +151,20 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
             request = BS.unpack(WS.requestPath r')
             err= BS.pack("Unkown Request "++request)
 
-{-
+--modReq :: Request -> ResourceT IO (Either Response ProxyDest)
+--modReq pdest req = return $ WPRModifiedRequest
+--       (req { rawPathInfo = "/v1/AUTH_a4c2ef109c996858a5c3f8e411de8538/gert/index.html" })
+--       pdest
+
 proxy1 :: Application
 proxy1 req = do
-    manager <- liftIO $ newManager def
+    manager <- lift $ newManager def
     waiProxyTo (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443) defaultOnExc manager req
 
-proxy2 :: Request -> ResourceT IO Response
+--proxy2 :: Request -> ResourceT IO Response
+proxy2 :: Application
 proxy2 req = do
-    manager <- liftIO $ newManager def
+    manager <- lift $ newManager def
     waiProxyToSettings
         (const $ return $ Right $ ProxyDest "lb1.pcs.ovh.net" 443)
         def { wpsOnExc = onExc, wpsTimeout = Nothing}
@@ -170,7 +176,18 @@ proxy2 req = do
             , ("Refresh", "1")
             ]
             "<h1>App not ready, please refresh</h1>"
--}
+            --L8.fromChunks [rawPathInfo req]
+
+static :: Args -> Application
+static arg =
+    let Args {..} = arg
+        mime' = map (pack *** BS.pack) mime
+        mimeMap = Map.fromList mime' `Map.union` defaultMimeMap
+        middle = gzip def . (if verbose then logStdout else id) . autohead in
+    middle $ staticApp (defaultFileServerSettings $ fromString docroot)
+        { ssIndices = if noindex then [] else mapMaybe (toPiece . pack) index
+        , ssGetMimeType = return . mimeByExt mimeMap defaultMimeType . fromPiece . fileName
+        }
 
 main :: IO ()
 main = do
@@ -178,10 +195,7 @@ main = do
     createDirectoryIfMissing False "data/image"
     chat <- newMVar (0,[])
     acid <- DB.open'
-    Args {..} <- cmdArgs defaultArgs
-    let mime' = map (pack *** BS.pack) mime
-    let mimeMap = Map.fromList mime' `Map.union` defaultMimeMap
-    let middle = gzip def . (if verbose then logStdout else id) . autohead
+    arg@Args {..} <- cmdArgs defaultArgs
     docroot' <- canonicalizePath docroot
     unless quiet $ printf "Serving directory %s on port %d with %s index files.\nhttp://localhost:9160\n" docroot' port (if noindex then "no" else show index)
     --runTLS defaultTLS defaultSettings
@@ -189,11 +203,7 @@ main = do
         { settingsPort = port
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
-        }
-        $ middle $ staticApp (defaultFileServerSettings $ fromString docroot)
-        { ssIndices = if noindex then [] else mapMaybe (toPiece . pack) index
-        , ssGetMimeType = return . mimeByExt mimeMap defaultMimeType . fromPiece . fileName
-        }
+        } $ static arg
     DB.close' acid
 
 {---------------snap-----------------------
