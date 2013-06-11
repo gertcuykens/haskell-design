@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
-module Database (AcidState, KeyValue, read', write', open', close') where
+{-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TypeFamilies, TemplateHaskell, DeriveGeneric#-}
+module Database (AcidState, Table, read', write', open', close') where
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens ((?=), at, from, makeIso, view)
@@ -15,28 +15,31 @@ import Data.Acid.Local (createCheckpointAndClose, createArchive)
 import Data.SafeCopy (deriveSafeCopy, base)
 import Data.Typeable (Typeable)
 import qualified Data.Map as Map (Map, empty)
+import GHC.Generics (Generic)
+import Network.Http.Client as Client
+import Prelude hiding (id)
+import qualified Prelude as P (id)
+import qualified System.IO.Streams as Streams
 
 data User = User {city::Text
                  ,country::Text
                  ,phone::Text
                  ,email::Text} deriving Typeable
-
-newtype KeyValue = KeyValue (Map.Map String User)
-
-$(deriveJSON id ''User)
 $(deriveSafeCopy 0 'base ''User)
-$(deriveSafeCopy 0 'base ''KeyValue)
-$(makeIso ''KeyValue)
+$(deriveJSON P.id ''User)
 
-insertKey :: String -> User -> Update KeyValue ()
-insertKey k v = from keyValue.at k?=v
+newtype Table = Table (Map.Map String User)
+$(deriveSafeCopy 0 'base ''Table)
+--table :: Simple Iso (Map.Map Key User) Table
+--table = iso Table get Table
+$(makeIso ''Table)
+insertKey :: String -> User -> Update Table ()
+insertKey k v = from table.at k?=v
+lookupKey :: String -> Query Table (Maybe User)
+lookupKey k = view (from table.at k)
+$(makeAcidic ''Table ['insertKey, 'lookupKey])
 
-lookupKey :: String -> Query KeyValue (Maybe User)
-lookupKey k = view (from keyValue.at k)
-
-$(makeAcidic ''KeyValue ['insertKey, 'lookupKey])
-
-read' :: MonadIO m => AcidState KeyValue -> Text -> m BL.ByteString
+read' :: MonadIO m => AcidState Table -> Text -> m BL.ByteString
 read' s' k' = do
     let k = unpack k'
     u' <- query' s' (LookupKey k)
@@ -44,17 +47,60 @@ read' s' k' = do
         Just u -> return $ encode u
         Nothing -> return $ encode (User "" "" "" "")
 
-write' :: MonadIO m => AcidState KeyValue -> Text -> BL.ByteString -> m ()
+write' :: MonadIO m => AcidState Table -> Text -> BL.ByteString -> m ()
 write' s' k' v' = do
     let k = unpack k'
     let v = fromMaybe (error "invalid json") (decode v')
     update' s' (InsertKey k v)
 
-open' :: IO (AcidState KeyValue)
-open' = openLocalStateFrom "data/KeyValue" (KeyValue Map.empty)
+open' :: IO (AcidState Table)
+open' = openLocalStateFrom "data/Table" (Table Map.empty)
 
-close' :: AcidState KeyValue -> IO ()
+close' :: AcidState Table -> IO ()
 close' s' = createCheckpointAndClose s' >> createArchive s'
+
+{-
+data MetaData = MetaData {
+      url :: String,
+      title :: String
+} deriving (Show, Generic)
+instance FromJSON MetaData
+
+data Properties = Properties {
+      detail :: String,
+      mag :: Double
+} deriving (Show, Generic)
+instance FromJSON Properties
+
+data Feature = Feature {
+      id :: String,
+      properties :: Properties
+} deriving (Show, Generic)
+instance FromJSON Feature
+
+data Feed = Feed {
+      metadata :: MetaData,
+      features :: [Feature]
+} deriving (Show, Generic)
+instance FromJSON Feed
+
+main :: IO ()
+main = do
+  c <- Client.openConnection "earthquake.usgs.gov" 80
+  q <- Client.buildRequest $ do
+         Client.http Client.GET "/earthquakes/feed/v1.0/summary/all_day.geojson"
+         Client.setAccept "application/json"
+  Client.sendRequest c q Client.emptyBody
+  x <- Client.receiveResponse c jsonHandler
+  print x
+  Client.closeConnection c
+
+jsonHandler :: Response -> Streams.InputStream BS.ByteString -> IO (Maybe Feed)
+jsonHandler _ i = do
+  c <- Streams.toList i
+  let f = decode (BL.fromChunks c) :: Maybe Feed
+  return f
+-}
 
 {-
 import qualified Data.Text.Lazy.Builder as TL (toLazyText)
@@ -68,18 +114,15 @@ where f = TL.toLazyText . fromValue . toJSON
 import Control.Monad.State (get, put)
 import Control.Monad.Reader (ask)
 
-insertKey :: Key -> User -> Update KeyValue ()
+insertKey :: Key -> User -> Update Table ()
 insertKey k v = do
-    KeyValue m <- get
-    put (KeyValue (Map.insert k v m))
+    Table m <- get
+    put (Table (Map.insert k v m))
 
-lookupKey :: Key -> Query KeyValue (Maybe User)
+lookupKey :: Key -> Query Table (Maybe User)
 lookupKey k = do
-    KeyValue m <- ask
+    Table m <- ask
     return (Map.lookup k m)
-
-keyValue :: Simple Iso (Map.Map Key User) KeyValue
-keyValue = iso KeyValue getKeyValue
 
 instance FromJSON User where
     parseJSON (Object v) = User <$> v .: "city"

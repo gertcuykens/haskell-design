@@ -107,7 +107,7 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
                     return (i,l)
                 _ -> return ()
 
-loop2 ::  DB.AcidState DB.KeyValue -> Text -> WS.WebSockets WS.Hybi10 ()
+loop2 ::  DB.AcidState DB.Table -> Text -> WS.WebSockets WS.Hybi10 ()
 loop2 state uid = forever $ do
     DB.read' state uid >>= WS.sendTextData
     WS.receiveData >>= DB.write' state uid
@@ -120,7 +120,7 @@ loop3 p = forever $ do
         Left _ -> return ()
     WS.receiveData >>= liftIO . BL.writeFile p
 
-login :: MVar Clients -> DB.AcidState DB.KeyValue -> WS.Request -> WS.WebSockets WS.Hybi10 ()
+login :: MVar Clients -> DB.AcidState DB.Table -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
     --WS.getVersion >>= liftIO . print . ("Connection Open: " ++)
