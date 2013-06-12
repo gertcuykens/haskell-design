@@ -1,24 +1,14 @@
 name: haskell-design
-version: 0.1.0.0
+version: 0.0.0.0
 synopsis: Haskell web design.
 
-description: sudo apt-get libgmp3-dev
-             sudo apt-get freeglut3-dev
-             configure --prefix=/home/gert/.ghc
-             .
-             cabal update
-             cabal install chat.cabal
-             .
-             ghci
-             Prelude> :set -isrc
-             Prelude> :l src/Main.hs
-             *Main> :main
-             .
-             http://localhost:9160/
+description: libgmp3-dev
+             freeglut3-dev
+             libssl-dev
 
 homepage: https://github.com/gertcuykens/haskell-design.git
 license: GPL-3
-license-file: LICENSE
+--license-file: LICENSE
 author: Gert Cuykens
 maintainer: gert.cuykens@gmail.com
 category: Web
@@ -59,4 +49,5 @@ executable haskell-design
                  , hoauth2 >= 0.2
                  , cmdargs >= 0.6
                  , resourcet >= 0.4
+                 , blaze-builder >= 0.3
 

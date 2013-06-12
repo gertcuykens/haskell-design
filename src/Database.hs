@@ -1,10 +1,13 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TypeFamilies, TemplateHaskell, DeriveGeneric#-}
 module Database (AcidState, Table, read', write', open', close') where
+import Blaze.ByteString.Builder.Internal.Types (Builder)
+import Blaze.ByteString.Builder.Char.Utf8 (fromString)
+import Blaze.ByteString.Builder (fromLazyByteString)
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens ((?=), at, from, makeIso, view)
 import Data.Maybe (fromMaybe)
-import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode)
+import Data.Aeson ((.:), (.=), Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode, json, fromJSON, Result)
 import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -20,11 +23,12 @@ import Network.Http.Client as Client
 import Prelude hiding (id)
 import qualified Prelude as P (id)
 import qualified System.IO.Streams as Streams
+import System.IO.Streams.Attoparsec (parseFromStream)
 
 data User = User {city::Text
                  ,country::Text
                  ,phone::Text
-                 ,email::Text} deriving Typeable
+                 ,email::Text} deriving (Show, Typeable)
 $(deriveSafeCopy 0 'base ''User)
 $(deriveJSON P.id ''User)
 
@@ -84,22 +88,20 @@ data Feed = Feed {
 } deriving (Show, Generic)
 instance FromJSON Feed
 
-main :: IO ()
-main = do
-  c <- Client.openConnection "earthquake.usgs.gov" 80
-  q <- Client.buildRequest $ do
-         Client.http Client.GET "/earthquakes/feed/v1.0/summary/all_day.geojson"
-         Client.setAccept "application/json"
-  Client.sendRequest c q Client.emptyBody
-  x <- Client.receiveResponse c jsonHandler
-  print x
-  Client.closeConnection c
+main :: IO (Result Feed)
+main = withConnection (openConnection "earthquake.usgs.gov" 80) $ \c -> do
+    q <- Client.buildRequest $ do
+        Client.http Client.GET "/earthquakes/feed/v1.0/summary/all_day.geojson"
+        Client.setAccept "application/json"
+    Client.sendRequest c q Client.emptyBody
+    Client.receiveResponse c (\_ i -> parseJSONFromStream i :: IO (Result Feed))
 
-jsonHandler :: Response -> Streams.InputStream BS.ByteString -> IO (Maybe Feed)
-jsonHandler _ i = do
-  c <- Streams.toList i
-  let f = decode (BL.fromChunks c) :: Maybe Feed
-  return f
+parseJSONFromStream :: FromJSON a => Streams.InputStream BS.ByteString -> IO (Result a)
+parseJSONFromStream = parseFromStream $ fmap fromJSON json
+
+createJSONtoStream :: Streams.OutputStream Builder -> IO ()
+createJSONtoStream = Streams.write (Just (fromLazyByteString (encode (User "" "" "" ""))))
+--createJSONtoStream = Streams.write (Just (fromString "Hello World\n"))
 -}
 
 {-
