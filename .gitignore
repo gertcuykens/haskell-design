@@ -1,0 +1,6 @@
+dist
+test
+data
+Key.hs
+#git update-index --assume-unchanged Key.hs
+#git update-index --really-refresh
