@@ -53,7 +53,7 @@ data Args = Args
     } deriving (Show, Typeable, Data)
 
 defaultArgs :: Args
-defaultArgs = Args "www" ["index.html", "index.htm"] 9160 False False False [] "*"
+defaultArgs = Args "www" ["main.htm"] 9160 False False False [] "*"
 
 --defaultTLS :: TLSSettings
 --defaultTLS = TLSSettings "ssl/cert.pem" "ssl/key.pem"
