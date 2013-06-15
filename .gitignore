@@ -1,6 +1,6 @@
 dist
 test
 data
-Key.hs
-#git update-index --assume-unchanged Key.hs
+Keys.hs
+#git update-index --assume-unchanged src/Keys.hs
 #git update-index --really-refresh
