@@ -141,7 +141,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     broadcast t l
                     return (i,l)
                 loop1 s' (u,k)
-            "/data" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop3 ("data/image/"++unpack a++".png")
+            "/image" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop3 ("image/"++unpack a++".png")
             _ -> WS.sendTextData err
         where
             catchDisconnect e =
@@ -191,8 +191,8 @@ static arg =
 
 main :: IO ()
 main = do
-    createDirectoryIfMissing False "data"
-    createDirectoryIfMissing False "data/image"
+    --createDirectoryIfMissing False "state"
+    createDirectoryIfMissing False "image"
     chat <- newMVar (0,[])
     acid <- DB.open'
     arg@Args {..} <- cmdArgs defaultArgs

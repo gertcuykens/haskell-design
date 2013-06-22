@@ -23,15 +23,15 @@ function main(token){
     acid.onmessage = function(event){JSONform(document.forms[0],JSON.parse(event.data))}
     acid.onclose = function() {$('#warnings').append("Acid closed ");}
 
-    data = new WebSocket('ws://localhost:9160/data')
-    data.binaryType = 'blob'
-    data.onopen = function(){
-        dropBoxWS(data,document.getElementById('picture'))
-        data.send(token)
+    image = new WebSocket('ws://localhost:9160/image')
+    image.binaryType = 'blob'
+    image.onopen = function(){
+        dropBoxWS(image,document.getElementById('picture'))
+        image.send(token)
         //var b=new Blob(['Facebook Code '+code],{"type":"text/plain"})
         //console.log(ws1.bufferedAmount)
     }
-    data.onmessage = function(m){
+    image.onmessage = function(m){
         if (m.data instanceof ArrayBuffer) console.log("Type ArrayBuffer")
         if (m.data instanceof Blob){
             //if (!m.data.type.match(/image.*/)){return false}
@@ -41,7 +41,7 @@ function main(token){
         }
         if (typeof m.data === "string"){/*console.log("Type String")*/}
     }
-    data.onclose = function() {$('#warnings').append("Data closed ");}
+    image.onclose = function() {$('#warnings').append("Data closed ");}
 
     var users = []
 

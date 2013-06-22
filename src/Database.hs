@@ -12,7 +12,7 @@ import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Text (Text, unpack)
-import Data.Acid (AcidState, Update, Query, openLocalStateFrom, makeAcidic)
+import Data.Acid (AcidState, Update, Query, openLocalState, makeAcidic)
 import Data.Acid.Advanced (query', update')
 import Data.Acid.Local (createCheckpointAndClose, createArchive)
 import Data.SafeCopy (deriveSafeCopy, base)
@@ -32,7 +32,7 @@ data User = User {city::Text
 $(deriveSafeCopy 0 'base ''User)
 $(deriveJSON P.id ''User)
 
-newtype Table = Table (Map.Map String User)
+newtype Table = Table (Map.Map String User) deriving (Show, Typeable)
 $(deriveSafeCopy 0 'base ''Table)
 --table :: Simple Iso (Map.Map Key User) Table
 --table = iso Table get Table
@@ -58,7 +58,7 @@ write' s' k' v' = do
     update' s' (InsertKey k v)
 
 open' :: IO (AcidState Table)
-open' = openLocalStateFrom "data/Table" (Table Map.empty)
+open' = openLocalState (Table Map.empty)
 
 close' :: AcidState Table -> IO ()
 close' s' = createCheckpointAndClose s' >> createArchive s'
