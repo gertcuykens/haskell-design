@@ -191,7 +191,6 @@ static arg =
 
 main :: IO ()
 main = do
-    --createDirectoryIfMissing False "state"
     createDirectoryIfMissing False "image"
     chat <- newMVar (0,[])
     acid <- DB.open'
