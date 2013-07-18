@@ -11,6 +11,7 @@ import Control.Monad.Trans.Resource (ResourceT)
 import Control.Monad.Trans.Class (lift)
 import Data.Acid (AcidState, closeAcidState, createCheckpoint, Update, Query, makeAcidic)
 import Data.Acid.Advanced (query', update')
+import Data.Acid.Local (openLocalState, createCheckpointAndClose, createArchive)
 import Data.Acid.Remote (openRemoteState, sharedSecretPerform)
 import Data.Aeson (Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode, json, fromJSON, Result)
 import Data.Aeson.TH (deriveJSON)
@@ -44,7 +45,7 @@ import qualified Network.WebSockets as WS
 import System.Console.CmdArgs (cmdArgs)
 import System.Directory (createDirectoryIfMissing, canonicalizePath)
 import Text.Printf (printf)
-import Table (UserMap, User(..), InsertKey(..), LookupKey(..))
+import Table (UserMap(..), User(..), InsertKey(..), LookupKey(..))
 import WaiAppStatic.Types (ssIndices, toPiece, ssGetMimeType, fileName, fromPiece)
 --import Prelude hiding (id)
 --import qualified Prelude as P (id)
@@ -217,7 +218,8 @@ main :: IO ()
 main = do
     createDirectoryIfMissing False "image"
     chat <- newMVar (0,[])
-    acid <- openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080)
+    --acid <- openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080)
+    acid <- openLocalState (UserMap Map.empty)
     arg@Args {..} <- cmdArgs defaultArgs
     docroot' <- canonicalizePath docroot
     unless quiet $ printf "Serving directory %s on port %d with %s index files.\nhttp://localhost:9160\n" docroot' port (if noindex then "no" else show index)
@@ -227,7 +229,9 @@ main = do
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
         } $ static arg
-    closeAcidState acid
+    --closeAcidState acid
+    createCheckpointAndClose acid
+    createArchive acid
 
 {---------------snap-----------------------
  - import qualified Network.WebSockets.Snap as WS
