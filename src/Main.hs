@@ -1,27 +1,32 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards, DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
 module Main where
 import Control.Arrow ((***))
 --import Control.Concurrent (forkIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import Control.Exception (SomeException, try, fromException)
-import Control.Lens (perform, traverse, act, _2)
+import Control.Lens (perform, traverse, act, _2, (?=), at, from, makeIso, view)
 import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Resource (ResourceT)
 import Control.Monad.Trans.Class (lift)
-import System.Console.CmdArgs (cmdArgs)
-import System.Directory (createDirectoryIfMissing, canonicalizePath)
+import Data.Acid (AcidState, closeAcidState, createCheckpoint, Update, Query, makeAcidic)
+import Data.Acid.Advanced (query', update')
+import Data.Acid.Remote (openRemoteState, sharedSecretPerform)
+import Data.Aeson (Value(Object), FromJSON(parseJSON), ToJSON(toJSON), object, decode, encode, json, fromJSON, Result)
+import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 --import Data.Conduit.Network (Application)
 import Data.Data (Data)
 import Data.Function.Pointless ((.:))
 import qualified Data.Map as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Monoid (mappend)
 import Data.String (fromString)
 import Data.Text (Text, unpack, pack, intercalate)
 import Data.Typeable (Typeable)
+import qualified Google
+import Network (PortID(..))
 import Network.HTTP.Conduit (def, newManager) -- Response(..))
 --import Network.HTTP.ReverseProxy  (WPRProxyDest)
 import Network.HTTP.ReverseProxy  (ProxyDest(..), waiProxyToSettings, defaultOnExc, waiProxyTo, waiProxyToSettings, wpsTimeout, wpsOnExc)
@@ -36,10 +41,29 @@ import Network.Wai.Middleware.Autohead
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import Network.Wai.Middleware.Gzip
 import qualified Network.WebSockets as WS
+import System.Console.CmdArgs (cmdArgs)
+import System.Directory (createDirectoryIfMissing, canonicalizePath)
 import Text.Printf (printf)
+import Table (UserMap, User(..), InsertKey(..), LookupKey(..))
 import WaiAppStatic.Types (ssIndices, toPiece, ssGetMimeType, fileName, fromPiece)
-import qualified Database as DB
-import qualified Google
+--import Prelude hiding (id)
+--import qualified Prelude as P (id)
+
+$(deriveJSON id ''User)
+
+read' :: MonadIO m => AcidState UserMap -> Text -> m BL.ByteString
+read' s' k' = do
+    let k = unpack k'
+    u' <- query' s' (LookupKey k)
+    case u' of
+        Just u -> return $ encode u
+        Nothing -> return $ encode (User "" "" "" "")
+
+write' :: MonadIO m => AcidState UserMap -> Text -> BL.ByteString -> m ()
+write' s' k' v' = do
+    let k = unpack k'
+    let v = fromMaybe (error "invalid json") (decode v')
+    update' s' (InsertKey k v)
 
 data Args = Args
     { docroot :: FilePath
@@ -107,10 +131,10 @@ loop1 s' c@(u,_) = flip WS.catchWsError catchDisconnect $
                     return (i,l)
                 _ -> return ()
 
-loop2 ::  DB.AcidState DB.Table -> Text -> WS.WebSockets WS.Hybi10 ()
+loop2 ::  AcidState UserMap -> Text -> WS.WebSockets WS.Hybi10 ()
 loop2 state uid = forever $ do
-    DB.read' state uid >>= WS.sendTextData
-    WS.receiveData >>= DB.write' state uid
+    read' state uid >>= WS.sendTextData
+    WS.receiveData >>= write' state uid
 
 loop3 :: String -> WS.WebSockets WS.Hybi10 ()
 loop3 p = forever $ do
@@ -120,7 +144,7 @@ loop3 p = forever $ do
         Left _ -> return ()
     WS.receiveData >>= liftIO . BL.writeFile p
 
-login :: MVar Clients -> DB.AcidState DB.Table -> WS.Request -> WS.WebSockets WS.Hybi10 ()
+login :: MVar Clients -> AcidState UserMap -> WS.Request -> WS.WebSockets WS.Hybi10 ()
 login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.acceptRequest r'
     --WS.getVersion >>= liftIO . print . ("Connection Open: " ++)
@@ -193,7 +217,7 @@ main :: IO ()
 main = do
     createDirectoryIfMissing False "image"
     chat <- newMVar (0,[])
-    acid <- DB.open'
+    acid <- openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080)
     arg@Args {..} <- cmdArgs defaultArgs
     docroot' <- canonicalizePath docroot
     unless quiet $ printf "Serving directory %s on port %d with %s index files.\nhttp://localhost:9160\n" docroot' port (if noindex then "no" else show index)
@@ -203,7 +227,7 @@ main = do
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
         } $ static arg
-    DB.close' acid
+    closeAcidState acid
 
 {---------------snap-----------------------
  - import qualified Network.WebSockets.Snap as WS
