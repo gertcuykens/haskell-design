@@ -3,7 +3,7 @@ module Main where
 import Control.Arrow ((***))
 --import Control.Concurrent (forkIO)
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
-import Control.Exception (SomeException, try, fromException)
+import Control.Exception (bracket, SomeException, try, fromException)
 import Control.Lens (perform, traverse, act, _2, (?=), at, from, makeIso, view)
 import Control.Monad (forever, unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -214,24 +214,27 @@ static arg =
         , ssGetMimeType = return . mimeByExt mimeMap defaultMimeType . fromPiece . fileName
         }
 
-main :: IO ()
-main = do
+
+server :: AcidState UserMap -> IO ()
+server acid = do
+    createArchive acid
     createDirectoryIfMissing False "image"
     chat <- newMVar (0,[])
-    --acid <- openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080)
-    acid <- openLocalState (UserMap Map.empty)
     arg@Args {..} <- cmdArgs defaultArgs
     docroot' <- canonicalizePath docroot
     unless quiet $ printf "Serving directory %s on port %d with %s index files.\nhttp://localhost:9160\n" docroot' port (if noindex then "no" else show index)
-    --runTLS defaultTLS defaultSettings
     runSettings defaultSettings
         { settingsPort = port
         , settingsHost = fromString host
         , settingsIntercept = intercept (login chat acid)
         } $ static arg
-    --closeAcidState acid
-    createCheckpointAndClose acid
-    createArchive acid
+
+main :: IO ()
+main = bracket
+    --(openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080))
+    (openLocalState (UserMap Map.empty))
+    createCheckpointAndClose
+    server
 
 {---------------snap-----------------------
  - import qualified Network.WebSockets.Snap as WS
