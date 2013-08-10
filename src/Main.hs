@@ -5,7 +5,7 @@ import Control.Arrow ((***))
 import Control.Concurrent (newMVar, MVar, modifyMVar_, readMVar)
 import Control.Exception (bracket, SomeException, try, fromException)
 import Control.Lens (perform, traverse, act, _2, (?=), at, from, makeIso, view)
-import Control.Monad (forever, unless)
+import Control.Monad (forever, unless, liftM2)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Resource (ResourceT)
 import Control.Monad.Trans.Class (lift)
@@ -20,19 +20,21 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 --import Data.Conduit.Network (Application)
 import Data.Data (Data)
 import Data.Function.Pointless ((.:))
-import qualified Data.Map as Map
+import Data.Map (empty, fromList, union)
+import qualified Data.IntMap as I (empty)
 import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Monoid (mappend)
 import Data.String (fromString)
 import Data.Text (Text, unpack, pack, intercalate)
 import Data.Typeable (Typeable)
-import qualified Google
+import qualified GoogleProfile as Google
 import Network (PortID(..))
 import Network.HTTP.Conduit (def, newManager) -- Response(..))
 --import Network.HTTP.ReverseProxy  (WPRProxyDest)
 import Network.HTTP.ReverseProxy  (ProxyDest(..), waiProxyToSettings, defaultOnExc, waiProxyTo, waiProxyToSettings, wpsTimeout, wpsOnExc)
 import Network.HTTP.Types (status200)
 import Network.Mime (MimeMap, defaultMimeMap, mimeByExt, defaultMimeType)
+import Network.OAuth.OAuth2 (AccessToken(..), OAuth2Result(..))
 import Network.Wai (Application, Middleware, Request(..), Response, responseLBS)
 import Network.Wai.Application.Static (staticApp, defaultFileServerSettings)
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsIntercept, settingsHost, settingsPort)
@@ -45,7 +47,8 @@ import qualified Network.WebSockets as WS
 import System.Console.CmdArgs (cmdArgs)
 import System.Directory (createDirectoryIfMissing, canonicalizePath)
 import Text.Printf (printf)
-import Table (UserMap(..), User(..), InsertKey(..), LookupKey(..))
+import UserMap (UserMap(..), User(..), UserInsert(..), UserLookup(..))
+import GroupMap (GroupMap(..), GroupInsert(..), GroupLookup(..))
 import WaiAppStatic.Types (ssIndices, toPiece, ssGetMimeType, fileName, fromPiece)
 --import Prelude hiding (id)
 --import qualified Prelude as P (id)
@@ -55,7 +58,7 @@ $(deriveJSON id ''User)
 read' :: MonadIO m => AcidState UserMap -> Text -> m BL.ByteString
 read' s' k' = do
     let k = unpack k'
-    u' <- query' s' (LookupKey k)
+    u' <- query' s' (UserLookup k)
     case u' of
         Just u -> return $ encode u
         Nothing -> return $ encode (User "" "" "" "")
@@ -64,7 +67,7 @@ write' :: MonadIO m => AcidState UserMap -> Text -> BL.ByteString -> m ()
 write' s' k' v' = do
     let k = unpack k'
     let v = fromMaybe (error "invalid json") (decode v')
-    update' s' (InsertKey k v)
+    update' s' (UserInsert k v)
 
 data Args = Args
     { docroot :: FilePath
@@ -84,7 +87,7 @@ defaultArgs = Args "www" ["main.htm"] 9160 False False False [] "*"
 --defaultTLS = TLSSettings "ssl/cert.pem" "ssl/key.pem"
 
 type Counter = Int
-type Client = (Google.User, WS.Sink WS.Hybi10)
+type Client = (Google.Profile, WS.Sink WS.Hybi10)
 type Clients = (Counter, [Client])
 
 counter :: Clients -> Counter
@@ -152,9 +155,9 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
     WS.receiveData >>= \m ->
         --liftIO (print (BS.unpack m)) >>
         case request of
-            "/code" -> liftIO (Google.token m) >>= WS.sendTextData
-            "/acid" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop2 a' a
-            "/chat" -> liftIO (Google.userinfo' m) >>= \(Just u@(Google.User _ b _ _ _ _ _ _ _)) -> do
+            "/code" -> liftIO (Google.tid m) >>= \(Right (AccessToken x Nothing))-> WS.sendTextData x
+            "/acid" -> liftIO (Google.uid $ AccessToken m Nothing) >>= \(Right (Google.Profile a _ _ _ _ _ _ _ _)) -> loop2 a' a
+            "/chat" -> liftIO (Google.uid $ AccessToken m Nothing) >>= \(Right u@(Google.Profile _ b _ _ _ _ _ _ _)) -> do
                 WS.sendTextData ("Facebook Name " `mappend` b)
                 k <- WS.getSink
                 liftIO $ modifyMVar_ s' $ \s -> do
@@ -166,7 +169,7 @@ login s' a' r' = flip WS.catchWsError catchDisconnect $ do
                     broadcast t l
                     return (i,l)
                 loop1 s' (u,k)
-            "/image" -> liftIO (Google.userinfo' m) >>= \(Just (Google.User a _ _ _ _ _ _ _ _)) -> loop3 ("image/"++unpack a++".png")
+            "/image" -> liftIO (Google.uid $ AccessToken m Nothing) >>= \(Right (Google.Profile a _ _ _ _ _ _ _ _)) -> loop3 ("image/"++unpack a++".png")
             _ -> WS.sendTextData err
         where
             catchDisconnect e =
@@ -207,16 +210,15 @@ static :: Args -> Application
 static arg =
     let Args {..} = arg
         mime' = map (pack *** BS.pack) mime
-        mimeMap = Map.fromList mime' `Map.union` defaultMimeMap
+        mimeMap = fromList mime' `union` defaultMimeMap
         middle = gzip def . (if verbose then logStdout else id) . autohead in
     middle $ staticApp (defaultFileServerSettings $ fromString docroot)
         { ssIndices = if noindex then [] else mapMaybe (toPiece . pack) index
         , ssGetMimeType = return . mimeByExt mimeMap defaultMimeType . fromPiece . fileName
         }
 
-
-server :: AcidState UserMap -> IO ()
-server acid = do
+server :: (AcidState UserMap, AcidState GroupMap) -> IO ()
+server (acid,g) = do
     createArchive acid
     createDirectoryIfMissing False "image"
     chat <- newMVar (0,[])
@@ -229,12 +231,16 @@ server acid = do
         , settingsIntercept = intercept (login chat acid)
         } $ static arg
 
+openState :: IO (AcidState UserMap, AcidState GroupMap)
+openState = liftM2 (,) (openLocalState (UserMap empty)) (openLocalState (GroupMap I.empty))
+--openState = (,) <$> openLocalState (UserMap empty) <*> openLocalState (GroupMap I.empty)
+--(openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080))
+
+closeState :: (AcidState UserMap, AcidState GroupMap) -> IO ()
+closeState (a,b) = createCheckpointAndClose a >> createCheckpointAndClose b
+
 main :: IO ()
-main = bracket
-    --(openRemoteState (sharedSecretPerform $ BS.pack "12345") "localhost" (PortNumber 8080))
-    (openLocalState (UserMap Map.empty))
-    createCheckpointAndClose
-    server
+main = bracket openState closeState server
 
 {---------------snap-----------------------
  - import qualified Network.WebSockets.Snap as WS

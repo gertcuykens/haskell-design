@@ -1,7 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell#-}
-
-module Table where
-
+module UserMap where
 import Control.Lens ((?=), at, from, makeIso, view)
 import Data.Acid (Update, Query, makeAcidic)
 import Data.SafeCopy (deriveSafeCopy, base)
@@ -22,11 +20,11 @@ $(deriveSafeCopy 0 'base ''UserMap)
 
 $(makeIso ''UserMap)
 
-insertKey :: String -> User -> Update UserMap ()
-insertKey k v = (from userMap.at k) ?= v
+userInsert :: String -> User -> Update UserMap ()
+userInsert k v = (from userMap.at k) ?= v
 
-lookupKey :: String -> Query UserMap (Maybe User)
-lookupKey k = view (from userMap.at k)
+userLookup :: String -> Query UserMap (Maybe User)
+userLookup k = view (from userMap.at k)
 
-$(makeAcidic ''UserMap ['insertKey, 'lookupKey])
+$(makeAcidic ''UserMap ['userInsert, 'userLookup])
 
