@@ -1,10 +1,10 @@
 var token= getCookie('token')
 
-var c = document.URL.match('code=.*')
+var c = document.URL.match('code=')
 if (c instanceof Array){
-    c=c[0].replace(/^.*code=/,'')
+    //c=c[0].replace(/^.*code=/,'')
     var code = new WebSocket('ws:localhost:9160/code')
-    code.onopen = function(){code.send(c)}
+    code.onopen = function(){code.send(document.URL)}
     code.onmessage = function(e){token=e.data}
     code.onclose = function(){main(token)}
 }else{

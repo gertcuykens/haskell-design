@@ -168,7 +168,7 @@ login s' (a1,a2) r' = flip WS.catchWsError catchDisconnect $ do
         --liftIO (print (BS.unpack m)) >>
         let request = BS.unpack(WS.requestPath r') in
         case request of
-            "/code"  -> liftIO (Google.tid m) >>= \(Right (AccessToken x Nothing))-> WS.sendTextData x
+            "/code"  -> let (x,y) = Google.f2 (BS.unpack m) in liftIO (Google.tid x) >>= \(Right (AccessToken x Nothing))-> WS.sendTextData x
             "/acid"  -> liftIO (Google.uid $ AccessToken m Nothing) >>= \(Right   (Google.Profile a _ _ _ _ _ _ _ _)) -> liftIO (check (read . unpack $ a) [0] a2) >>= \true -> if true then loop2 a a1 else WS.sendTextData (pack "check group false")
             "/chat"  -> liftIO (Google.uid $ AccessToken m Nothing) >>= \(Right u@(Google.Profile a b _ _ _ _ _ _ _)) -> liftIO (check (read . unpack $ a) [0] a2) >>= \true -> if true then chat u b s' else WS.sendTextData (pack "check group false")
             "/image" -> liftIO (Google.uid $ AccessToken m Nothing) >>= \(Right   (Google.Profile a _ _ _ _ _ _ _ _)) -> liftIO (check (read . unpack $ a) [0] a2) >>= \true -> if true then loop3 ("image/"++unpack a++".png") else WS.sendTextData (pack "check group false")
