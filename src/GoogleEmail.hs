@@ -38,13 +38,13 @@ f1 s i = do
 
 f2 :: String -> (ByteString,[Int])
 f2 s = do
-    let a = drop 1 . takeWhile (/=']') . dropWhile (/='[') $ s
+    let a = drop 1 . takeWhile (/='&') . dropWhile (/='=') $ s
     let c = drop 6 . dropWhile (/='&') $ s
     (pack c, f1 a [])
 
 test :: IO ()
 test = do
-    putStrLn $ url [("state", "[0,1,2,3]")]
+    putStrLn $ url [("state", "0,1,2,3")]
     (code,state) <- fmap f2 getLine
     (Right t) <- tid code
     f t state
